@@ -1,0 +1,92 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Cormorant Garamond", serif;
+  --font-sans: "Inter", sans-serif;
+
+  --color-atarah-wine-950: #4a151c;
+  --color-atarah-wine-900: #692129;
+  --color-atarah-wine-800: #7a2a34;
+  --color-atarah-wine-700: #8f3a45;
+  --color-atarah-wine-500: #b75d69;
+
+  --color-atarah-gold-700: #a77b51;
+  --color-atarah-gold-600: #b48c6a;
+  --color-atarah-gold-500: #cbaf8e;
+  --color-atarah-gold-300: #deccb2;
+
+  --color-atarah-cream-50: #fdfaf5;
+  --color-atarah-cream-100: #fcf6ef;
+  --color-atarah-cream-200: #f1e7d4;
+
+  --color-atarah-rose-500: #c65e6d;
+  --color-atarah-olive-600: #7c7840;
+
+  --color-atarah-charcoal-900: #2c2525;
+  --color-atarah-charcoal-700: #514746;
+  --color-atarah-charcoal-600: #6c6260;
+}
+
+:root {
+  font-family: var(--font-sans);
+  color: var(--color-atarah-charcoal-900);
+  background: var(--color-atarah-cream-50);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(203, 175, 142, 0.18),
+      transparent 35%
+    ),
+    var(--color-atarah-cream-50);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  color: white;
+  background: var(--color-atarah-wine-900);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
