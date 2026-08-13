@@ -20,29 +20,51 @@ export function CatalogPage() {
   const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data])
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-4 py-10 lg:px-8">
-      <div className="space-y-3">
-        <p className="text-sm font-bold uppercase tracking-[0.25em] text-atarah-gold-700">Catálogo</p>
-        <h1 className="font-display text-5xl font-bold text-atarah-wine-900">Uniformes médicos confeccionados bajo pedido</h1>
-        <p className="max-w-3xl text-base leading-7 text-atarah-charcoal-600">Explora los modelos activos de Atarah Atelier, elige tu estilo y personaliza talla, color y detalles antes de solicitar tu pedido.</p>
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:space-y-8 sm:py-10 lg:px-8">
+      <div className="space-y-2.5 sm:space-y-3">
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-atarah-gold-700 sm:text-sm">
+          Catálogo
+        </p>
+        <h1 className="font-display text-3xl font-bold leading-tight text-atarah-wine-900 sm:text-4xl lg:text-5xl">
+          Uniformes médicos confeccionados bajo pedido
+        </h1>
+        <p className="max-w-3xl text-sm leading-6 text-atarah-charcoal-600 sm:text-base sm:leading-7">
+          Explora los modelos activos de Atarah Atelier, elige tu estilo y personaliza talla, color y detalles antes de solicitar tu pedido.
+        </p>
       </div>
 
       <TrustNotice />
-      <CatalogFilters categories={categories} filters={filters} onChange={setFilters} />
+
+      {/* Filtros pegados arriba al scrollear en mobile, para no perderlos entre productos */}
+      <div className="sticky top-0 z-10 -mx-4 bg-[#fcf8f2]/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+        <CatalogFilters categories={categories} filters={filters} onChange={setFilters} />
+      </div>
 
       {productsQuery.isError ? (
         <Alert tone="error">
           <p>{productsQuery.error.message}</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => void productsQuery.refetch()}>Intentar nuevamente</Button>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => void productsQuery.refetch()}>
+            Intentar nuevamente
+          </Button>
         </Alert>
       ) : productsQuery.isLoading ? (
-        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-[420px] animate-pulse rounded-[2rem] bg-white" />)}
+        <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="h-[320px] animate-pulse rounded-3xl bg-white sm:h-[420px] sm:rounded-[2rem]" />
+          ))}
         </div>
       ) : productsQuery.data?.length ? (
         <ProductGrid products={productsQuery.data} />
       ) : (
-        <EmptyState title="No encontramos productos con esos filtros" description="Ajusta la búsqueda o vuelve a ver todos los productos activos del catálogo." action={<Link to="/productos"><Button>Ver catálogo completo</Button></Link>} />
+        <EmptyState
+          title="No encontramos productos con esos filtros"
+          description="Ajusta la búsqueda o vuelve a ver todos los productos activos del catálogo."
+          action={
+            <Link to="/productos">
+              <Button>Ver catálogo completo</Button>
+            </Link>
+          }
+        />
       )}
     </div>
   )

@@ -95,6 +95,23 @@ export function buildGuestOrderInput(
   }
 }
 
+export async function notifyNewOrderCreated(payload: {
+  created_at?: string | null
+  customer_name?: string | null
+  delivery_method?: string | null
+  order_number: string
+  source?: string | null
+  total: number
+}) {
+  const { error } = await supabase.functions.invoke('bright-worker', {
+    body: payload,
+  })
+
+  if (error) {
+    throw error
+  }
+}
+
 export async function createGuestOrder(input: CreateGuestOrderInput): Promise<CreateGuestOrderResult> {
   let data: unknown = null
   let error: { message?: string | null; details?: string | null; hint?: string | null } | null = null
@@ -143,7 +160,7 @@ export async function createGuestOrder(input: CreateGuestOrderInput): Promise<Cr
     throw new Error('No fue posible crear el pedido. Intenta nuevamente.')
   }
 
-  return {
+  const createdOrder = {
     created_at: order.created_at,
     discount_amount: normalizeNumber(order.discount_amount),
     order_id: order.order_id,
@@ -152,6 +169,19 @@ export async function createGuestOrder(input: CreateGuestOrderInput): Promise<Cr
     subtotal: normalizeNumber(order.subtotal),
     total: normalizeNumber(order.total),
   }
+
+  void notifyNewOrderCreated({
+    created_at: createdOrder.created_at,
+    customer_name: input.customer.full_name,
+    delivery_method: input.delivery_method,
+    order_number: createdOrder.order_number,
+    source: 'public',
+    total: createdOrder.total,
+  }).catch((notificationError: unknown) => {
+    console.error('No se pudo enviar la notificaci?n del pedido.', notificationError)
+  })
+
+  return createdOrder
 }
 
 export function persistCheckoutSession(session: CheckoutSession) {
