@@ -85,11 +85,6 @@ export function OrderNotesSection({ errors, values, onChange }: CheckoutFormFiel
     <div className="space-y-4">
       <Alert>La fecha requerida está sujeta a confirmación. Nuestro equipo validará disponibilidad, tiempo de confección y modalidad de entrega.</Alert>
       <Textarea id="notes" label="Observaciones generales" value={values.notes} error={errors.notes} onChange={(event) => onChange('notes', event.target.value)} />
-      <label className="flex items-start gap-3 rounded-2xl border border-atarah-gold-300 bg-white p-4 text-sm text-atarah-charcoal-700">
-        <input type="checkbox" checked={values.acceptsMadeToOrder} onChange={(event) => onChange('acceptsMadeToOrder', event.target.checked)} className="mt-1" />
-        <span>Entiendo que Atarah Atelier trabaja con confección bajo pedido y que el total y tiempos serán confirmados antes de pago y entrega.</span>
-      </label>
-      {errors.acceptsMadeToOrder ? <p className="text-sm text-rose-700">{errors.acceptsMadeToOrder}</p> : null}
     </div>
   )
 }

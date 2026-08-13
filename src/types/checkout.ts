@@ -1,8 +1,6 @@
-import type { AppliedDiscount, SellerOrderDraftItem } from './database'
+﻿import type { AppliedDiscount, SellerOrderDraftItem } from './database'
 import type { CartItem } from './cart'
-
 export interface CheckoutFormValues {
-  acceptsMadeToOrder: boolean
   address: string
   city: string
   delivery_method: 'retiro' | 'delivery' | 'envio_nacional'
@@ -15,7 +13,6 @@ export interface CheckoutFormValues {
   requested_date: string
   state: string
 }
-
 export interface CreateGuestOrderInput {
   checkout_token: string
   customer: {
@@ -41,7 +38,6 @@ export interface CreateGuestOrderInput {
   preferred_contact_method: CheckoutFormValues['preferred_contact_method']
   requested_date: string | null
 }
-
 export interface CreateStaffOrderInput extends Omit<CreateGuestOrderInput, 'items'> {
   initial_payment_amount: number
   manual_discount_amount?: number
@@ -51,7 +47,6 @@ export interface CreateStaffOrderInput extends Omit<CreateGuestOrderInput, 'item
   order_status?: string
   paid_at?: string | null
 }
-
 export interface CreateGuestOrderResult {
   created_at: string
   discount_amount?: number
@@ -61,7 +56,6 @@ export interface CreateGuestOrderResult {
   subtotal?: number
   total: number
 }
-
 export interface CheckoutSession {
   appliedDiscount?: AppliedDiscount | null
   order: CreateGuestOrderResult
