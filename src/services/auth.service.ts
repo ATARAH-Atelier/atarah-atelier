@@ -63,6 +63,15 @@ function normalizeRole(value: string | null | undefined): UserRole {
 }
 
 function getAuthRedirectUrl(path: string) {
+  const configuredSiteUrl =
+    typeof import.meta.env.VITE_SITE_URL === 'string'
+      ? import.meta.env.VITE_SITE_URL.trim().replace(/\/+$/, '')
+      : ''
+
+  if (configuredSiteUrl) {
+    return `${configuredSiteUrl}${path}`
+  }
+
   if (typeof window === 'undefined') {
     return undefined
   }
@@ -301,3 +310,4 @@ export function resolvePostLoginPath(profile: AppProfile | null) {
 
   return '/mi-cuenta'
 }
+
