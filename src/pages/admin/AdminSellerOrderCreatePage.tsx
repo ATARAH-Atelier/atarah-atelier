@@ -865,7 +865,7 @@ export function AdminSellerOrderCreatePage() {
                 </div>
               )}
 
-              <div className="flex justify-between pt-2">
+              <div className="flex justify-between gap-3 pt-2">
                 <Button variant="outline" onClick={() => handleSectionChange('customer')}>
                   ← Cliente
                 </Button>
@@ -993,9 +993,17 @@ export function AdminSellerOrderCreatePage() {
                 </div>
               </div>
 
-              <div className="flex justify-between pt-2">
+              <div className="flex justify-between gap-3 pt-2">
                 <Button variant="outline" onClick={() => handleSectionChange('products')}>
                   ← Productos
+                </Button>
+                <Button
+                  className="lg:hidden"
+                  loading={createOrderMutation.isPending}
+                  onClick={() => { if (discountCode.trim()) { void handleApplyDiscount() } void handleCreateOrder() }}
+                  leftIcon={<CheckCircle2 className="size-5" />}
+                >
+                  {createOrderMutation.isPending ? 'Registrando...' : 'Registrar pedido'}
                 </Button>
               </div>
             </Card>
