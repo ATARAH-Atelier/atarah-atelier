@@ -12,15 +12,21 @@ interface CheckoutOrderSummaryProps {
   total: number
 }
 
+const mobilePaymentDetails = [
+  { label: 'Telefono', value: '0414-0491999' },
+  { label: 'Cedula', value: '11.711.665' },
+  { label: 'Banco', value: 'BNC' },
+] as const
+
 function formatSizeSummary(item: CartItem) {
   const parts = [
     item.selectedTopSize ? `Blusa: ${item.selectedTopSize}` : null,
-    item.selectedBottomSize ? `Pantalón: ${item.selectedBottomSize}` : null,
+    item.selectedBottomSize ? `Pantalon: ${item.selectedBottomSize}` : null,
     item.selectedColor ?? 'Sin color',
     `${item.quantity} uds.`,
   ].filter(Boolean)
 
-  return parts.join(' • ')
+  return parts.join(' - ')
 }
 
 export function CheckoutOrderSummary({ appliedDiscount, items, total }: CheckoutOrderSummaryProps) {
@@ -30,7 +36,7 @@ export function CheckoutOrderSummary({ appliedDiscount, items, total }: Checkout
     <Card className="space-y-4 lg:sticky lg:top-28">
       <div>
         <p className="font-display text-3xl font-bold text-atarah-wine-900">Resumen</p>
-        <p className="mt-1 text-sm text-atarah-charcoal-600">El total será recalculado por el servidor antes de confirmar el pedido.</p>
+        <p className="mt-1 text-sm text-atarah-charcoal-600">El total sera recalculado por el servidor antes de confirmar el pedido.</p>
       </div>
       <div className="space-y-4">
         {items.map((item) => (
@@ -58,6 +64,19 @@ export function CheckoutOrderSummary({ appliedDiscount, items, total }: Checkout
         <div className="flex items-center justify-between text-lg font-semibold text-atarah-wine-900">
           <span>Total estimado</span>
           <span>{formatCurrency(finalTotal)}</span>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-atarah-gold-300/60 bg-atarah-cream-50 p-4">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-atarah-wine-800">
+          Pago movil
+        </p>
+        <div className="mt-3 space-y-2 text-sm text-atarah-charcoal-700">
+          {mobilePaymentDetails.map((detail) => (
+            <div key={detail.label} className="flex items-center justify-between gap-3">
+              <span className="text-atarah-charcoal-500">{detail.label}</span>
+              <span className="font-semibold text-atarah-charcoal-900">{detail.value}</span>
+            </div>
+          ))}
         </div>
       </div>
       <Link to="/carrito">
