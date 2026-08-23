@@ -234,9 +234,11 @@ export interface AdminOrderItem {
   blouse_size: string | null
   color_hex: string | null
   color_name: string | null
+  id: string
   line_total: number
   notes: string | null
   pants_size: string | null
+  product_id: string | null
   product_name: string
   quantity: number
   unit_price: number
@@ -287,6 +289,16 @@ export interface UpdateAdminOrderInput {
   paid_amount: number
   preferred_contact_method?: string | null
   status: OrderStatus
+}
+
+export interface UpdateAdminOrderItemInput {
+  id: string
+  notes: string | null
+  product_id: string
+  quantity: number
+  selected_bottom_size_id: string | null
+  selected_color_id: string | null
+  selected_top_size_id: string | null
 }
 
 export interface CreateOrderPaymentInput {

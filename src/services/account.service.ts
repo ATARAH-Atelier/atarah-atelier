@@ -1,4 +1,4 @@
-﻿import { normalizePhone } from '../lib/public-utils'
+import { normalizePhone } from '../lib/public-utils'
 import { supabase } from '../lib/supabase'
 import { normalizeNumber } from '../lib/utils'
 import type { AdminOrderItem, CustomerRow, Order, OrderRow } from '../types/database'
@@ -18,6 +18,8 @@ interface UpdateCustomerProfileInput {
 }
 
 interface OrderItemRow {
+  id: string
+  product_id?: string | null
   color_hex?: string | null
   color_name?: string | null
   line_total?: number | string | null
@@ -87,7 +89,7 @@ export async function getCustomerAccount(userId: string): Promise<CustomerAccoun
   const orderIds = orders.map((order) => order.id)
   const { data: itemsData, error: itemsError } = await supabase
     .from('order_items')
-    .select('order_id, product_name, product_name_snapshot, blouse_size, pants_size, color_name, color_hex, quantity, unit_price, subtotal, total, line_total')
+    .select('id, order_id, product_id, product_name, product_name_snapshot, blouse_size, pants_size, color_name, color_hex, quantity, unit_price, subtotal, total, line_total')
     .in('order_id', orderIds)
 
   if (itemsError) {
@@ -103,12 +105,14 @@ export async function getCustomerAccount(userId: string): Promise<CustomerAccoun
     const lineTotal = item.line_total ?? item.total ?? item.subtotal ?? unitPrice * quantity
 
     orderItems.push({
+      id: item.id,
       blouse_size: item.blouse_size ?? null,
       color_hex: item.color_hex ?? null,
       color_name: item.color_name ?? null,
       line_total: normalizeNumber(lineTotal),
       notes: null,
       pants_size: item.pants_size ?? null,
+      product_id: item.product_id ?? null,
       product_name: item.product_name_snapshot ?? item.product_name ?? 'Producto sin nombre',
       quantity,
       unit_price: unitPrice,
@@ -190,3 +194,4 @@ export async function updateCustomerProfile(userId: string, input: UpdateCustome
 
   return createdCustomer.id
 }
+

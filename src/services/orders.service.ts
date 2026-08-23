@@ -12,6 +12,7 @@ import type {
   OrderStatus,
   SellerOrderDraftItem,
   UpdateAdminOrderInput,
+  UpdateAdminOrderItemInput,
   UpdateOrderPaymentInput,
 } from '../types/database'
 import type { CreateStaffOrderInput } from '../types/checkout'
@@ -45,8 +46,10 @@ interface OrderDetailRow extends OrderRow {
 interface OrderItemRow {
   color_hex?: string | null
   color_name?: string | null
+  id: string
   line_total?: number | string | null
   notes?: string | null
+  product_id?: string | null
   product_name?: string | null
   product_name_snapshot?: string | null
   quantity?: number | null
@@ -153,9 +156,11 @@ function mapOrderItem(row: OrderItemRow): AdminOrderItem {
     blouse_size: row.blouse_size ?? null,
     color_hex: row.color_hex ?? null,
     color_name: row.color_name ?? null,
+    id: row.id,
     line_total: normalizeNumber(lineTotal),
     notes: row.notes ?? null,
     pants_size: row.pants_size ?? null,
+    product_id: row.product_id ?? null,
     product_name: row.product_name_snapshot ?? row.product_name ?? 'Producto sin nombre',
     quantity,
     unit_price: unitPrice,
@@ -344,7 +349,7 @@ export async function getAdminOrderDetail(id: string, scope?: AdminOrderScope): 
   const [{ data: items, error: itemsError }, { data: timeline, error: timelineError }, { data: payments, error: paymentsError }] = await Promise.all([
     supabase
       .from('order_items')
-      .select('product_name, product_name_snapshot, blouse_size, pants_size, color_name, color_hex, quantity, unit_price, subtotal, total, line_total, notes')
+      .select('id, product_id, product_name, product_name_snapshot, blouse_size, pants_size, color_name, color_hex, quantity, unit_price, subtotal, total, line_total, notes')
       .eq('order_id', id),
     supabase
       .from('order_status_history')
@@ -497,6 +502,214 @@ export async function updateAdminOrder(id: string, input: UpdateAdminOrderInput,
   }
 
   return await getAdminOrderDetail(id, scope)
+}
+
+async function resolveUpdatedOrderItem(input: UpdateAdminOrderItemInput) {
+  const quantity = Math.max(1, Math.floor(input.quantity || 0))
+
+  if (!input.product_id) {
+    throw new Error('Selecciona un producto valido para el item.')
+  }
+
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('id, name, base_price')
+    .eq('id', input.product_id)
+    .maybeSingle()
+
+  if (productError || !product) {
+    throw new Error('No fue posible cargar el producto del item.')
+  }
+
+  let unitPrice = normalizeNumber(product.base_price)
+  let blouseSize: string | null = null
+  let pantsSize: string | null = null
+  let colorName: string | null = null
+  let colorHex: string | null = null
+
+  if (input.selected_top_size_id) {
+    const { data: topSize, error: topSizeError } = await supabase
+      .from('product_sizes')
+      .select('id, size, price_adjustment, product_id, size_type')
+      .eq('id', input.selected_top_size_id)
+      .eq('product_id', input.product_id)
+      .eq('size_type', 'top')
+      .maybeSingle()
+
+    if (topSizeError || !topSize) {
+      throw new Error('La talla de blusa seleccionada no es valida para este producto.')
+    }
+
+    blouseSize = topSize.size ?? null
+    unitPrice += normalizeNumber(topSize.price_adjustment)
+  }
+
+  if (input.selected_bottom_size_id) {
+    const { data: bottomSize, error: bottomSizeError } = await supabase
+      .from('product_sizes')
+      .select('id, size, price_adjustment, product_id, size_type')
+      .eq('id', input.selected_bottom_size_id)
+      .eq('product_id', input.product_id)
+      .eq('size_type', 'bottom')
+      .maybeSingle()
+
+    if (bottomSizeError || !bottomSize) {
+      throw new Error('La talla de pantalon seleccionada no es valida para este producto.')
+    }
+
+    pantsSize = bottomSize.size ?? null
+    unitPrice += normalizeNumber(bottomSize.price_adjustment)
+  }
+
+  if (input.selected_color_id) {
+    const { data: color, error: colorError } = await supabase
+      .from('product_colors')
+      .select('id, color_name, color_hex, price_adjustment, product_id')
+      .eq('id', input.selected_color_id)
+      .eq('product_id', input.product_id)
+      .maybeSingle()
+
+    if (colorError || !color) {
+      throw new Error('El color seleccionado no es valido para este producto.')
+    }
+
+    colorName = color.color_name ?? null
+    colorHex = color.color_hex ?? null
+    unitPrice += normalizeNumber(color.price_adjustment)
+  }
+
+  const lineTotal = unitPrice * quantity
+
+  return {
+    blouse_size: blouseSize,
+    color_hex: colorHex,
+    color_name: colorName,
+    id: input.id,
+    line_total: lineTotal,
+    notes: input.notes?.trim() || null,
+    pants_size: pantsSize,
+    product_id: product.id,
+    product_name: product.name,
+    quantity,
+    subtotal: lineTotal,
+    total: lineTotal,
+    unit_price: unitPrice,
+  }
+}
+
+export async function updateAdminOrderItems(
+  orderId: string,
+  input: { items: UpdateAdminOrderItemInput[] },
+  scope?: AdminOrderScope,
+) {
+  if (!input.items.length) {
+    throw new Error('El pedido debe conservar al menos un item.')
+  }
+
+  let currentOrderQuery = supabase
+    .from('orders')
+    .select('id, discount_amount, paid_amount')
+    .eq('id', orderId)
+
+  if (scope?.sellerProfileId) {
+    currentOrderQuery = currentOrderQuery.eq('seller_profile_id', scope.sellerProfileId)
+  }
+
+  const { data: currentOrder, error: currentOrderError } = await currentOrderQuery.maybeSingle()
+
+  if (currentOrderError || !currentOrder) {
+    throw new Error('No fue posible cargar el pedido antes de editar sus items.')
+  }
+
+  const { data: existingItems, error: existingItemsError } = await supabase
+    .from('order_items')
+    .select('id')
+    .eq('order_id', orderId)
+
+  if (existingItemsError) {
+    throw new Error('No fue posible consultar los items actuales del pedido.')
+  }
+
+  const existingIds = new Set((existingItems ?? []).map((item) => item.id))
+
+  for (const item of input.items) {
+    if (!existingIds.has(item.id)) {
+      throw new Error('Uno de los items que intentas editar ya no existe en el pedido.')
+    }
+  }
+
+  const resolvedItems = await Promise.all(input.items.map((item) => resolveUpdatedOrderItem(item)))
+  const subtotal = resolvedItems.reduce((sum, item) => sum + item.line_total, 0)
+  const discountAmount = normalizeNumber(currentOrder.discount_amount)
+  const total = Math.max(0, subtotal - discountAmount)
+  const paidAmount = normalizeNumber(currentOrder.paid_amount)
+
+  if (paidAmount > total) {
+    throw new Error('No puedes dejar el total del pedido por debajo de lo ya pagado. Corrige pagos o aumenta el monto de los items.')
+  }
+
+  const remainingIds = new Set(resolvedItems.map((item) => item.id))
+  const itemIdsToDelete = [...existingIds].filter((id) => !remainingIds.has(id))
+
+  if (itemIdsToDelete.length) {
+    const { error: deleteError } = await supabase
+      .from('order_items')
+      .delete()
+      .eq('order_id', orderId)
+      .in('id', itemIdsToDelete)
+
+    if (deleteError) {
+      throw new Error('No fue posible eliminar los items removidos del pedido.')
+    }
+  }
+
+  for (const item of resolvedItems) {
+    const { error: itemUpdateError } = await supabase
+      .from('order_items')
+      .update({
+        blouse_size: item.blouse_size,
+        color_hex: item.color_hex,
+        color_name: item.color_name,
+        line_total: item.line_total,
+        notes: item.notes,
+        pants_size: item.pants_size,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        product_name_snapshot: item.product_name,
+        quantity: item.quantity,
+        subtotal: item.subtotal,
+        total: item.total,
+        unit_price: item.unit_price,
+      })
+      .eq('id', item.id)
+      .eq('order_id', orderId)
+
+    if (itemUpdateError) {
+      throw new Error('No fue posible actualizar uno de los items del pedido.')
+    }
+  }
+
+  let orderUpdateQuery = supabase
+    .from('orders')
+    .update({
+      balance: Math.max(0, total - paidAmount),
+      subtotal,
+      total,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+
+  if (scope?.sellerProfileId) {
+    orderUpdateQuery = orderUpdateQuery.eq('seller_profile_id', scope.sellerProfileId)
+  }
+
+  const { error: orderUpdateError } = await orderUpdateQuery
+
+  if (orderUpdateError) {
+    throw new Error('No fue posible recalcular el total del pedido despues de editar los items.')
+  }
+
+  return await getAdminOrderDetail(orderId, scope)
 }
 
 export async function createOrderPayment(orderId: string, input: CreateOrderPaymentInput, scope?: AdminOrderScope) {

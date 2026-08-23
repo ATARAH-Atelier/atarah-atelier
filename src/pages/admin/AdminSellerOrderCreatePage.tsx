@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
+  RotateCcw,
+  Search,
   Store,
 } from 'lucide-react'
 import { useMemo, useState, useRef, useEffect } from 'react'
@@ -26,9 +28,10 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { createCheckoutToken } from '../../services/checkout.service'
 import { normalizePhone } from '../../lib/public-utils'
 import { createStaffOrder } from '../../services/orders.service'
+import { getAdminCustomers } from '../../services/customers.service'
 import { validateDiscountCode } from '../../services/discounts.service'
 import { getPublicProducts } from '../../services/public-products.service'
-import { formatCurrency } from '../../lib/utils'
+import { formatCurrency, formatDate } from '../../lib/utils'
 import type { AppliedDiscount, SellerOrderDraftItem } from '../../types/database'
 
 const DELIVERY_METHODS = [
@@ -48,7 +51,6 @@ const PAYMENT_METHODS = [
 type FormSection = 'customer' | 'products' | 'delivery'
 
 const PHONE_PREFIXES = ['0412', '0414', '0416', '0424', '0426'] as const
-const SELLER_ORDER_DRAFT_STORAGE_KEY = 'atarah:seller-order-draft'
 
 export function AdminSellerOrderCreatePage() {
   useDocumentTitle('Registrar pedido | Atarah Atelier')
@@ -58,6 +60,10 @@ export function AdminSellerOrderCreatePage() {
   const productsQuery = useQuery({
     queryFn: () => getPublicProducts({ sort: 'recommended' }),
     queryKey: ['staff-products-for-order'],
+  })
+  const customersQuery = useQuery({
+    queryFn: getAdminCustomers,
+    queryKey: ['staff-customers-for-order'],
   })
 
   // Estados del producto actual
@@ -78,6 +84,8 @@ export function AdminSellerOrderCreatePage() {
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [address, setAddress] = useState('')
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [deliveryMethod, setDeliveryMethod] = useState<'retiro' | 'delivery' | 'envio_nacional'>('retiro')
   const [orderNotes, setOrderNotes] = useState('')
   const [discountCode, setDiscountCode] = useState('')
@@ -92,118 +100,41 @@ export function AdminSellerOrderCreatePage() {
   const [activeSection, setActiveSection] = useState<FormSection>('customer')
   const [removingIndex, setRemovingIndex] = useState<number | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({})
-  const [isDraftHydrated, setIsDraftHydrated] = useState(false)
   const lastAddedRef = useRef<HTMLDivElement | null>(null)
 
-  // Scroll al último item agregado
   useEffect(() => {
     if (lastAddedRef.current) {
       lastAddedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }, [items.length])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
+  const filteredCustomers = useMemo(() => {
+    const query = customerSearch.trim().toLowerCase()
+
+    if (query.length < 2) {
+      return []
     }
 
-    try {
-      const rawDraft = window.localStorage.getItem(SELLER_ORDER_DRAFT_STORAGE_KEY)
+    return (customersQuery.data ?? [])
+      .filter((customer) => {
+        const phoneValue = normalizePhone(customer.phone ?? '')
+        return [
+          customer.full_name,
+          customer.email ?? '',
+          customer.city ?? '',
+          customer.state ?? '',
+          customer.address ?? '',
+          phoneValue,
+        ].some((value) => value.toLowerCase().includes(query))
+      })
+      .slice(0, 6)
+  }, [customerSearch, customersQuery.data])
 
-      if (!rawDraft) {
-        return
-      }
+  const selectedExistingCustomer = useMemo(
+    () => (customersQuery.data ?? []).find((customer) => customer.id === selectedCustomerId) ?? null,
+    [customersQuery.data, selectedCustomerId],
+  )
 
-      const draft = JSON.parse(rawDraft) as {
-        activeSection?: FormSection
-        address?: string
-        city?: string
-        deliveryMethod?: 'retiro' | 'delivery' | 'envio_nacional'
-        email?: string
-        fullName?: string
-        initialPaymentAmount?: string
-        initialPaymentMethod?: string
-        initialPaymentNotes?: string
-        items?: SellerOrderDraftItem[]
-        orderNotes?: string
-        discountCode?: string
-        manualDiscountAmount?: string
-        appliedDiscount?: AppliedDiscount | null
-        paidAt?: string
-        phone?: string
-        state?: string
-      }
-
-      setActiveSection(draft.activeSection ?? 'customer')
-      setAddress(draft.address ?? '')
-      setCity(draft.city ?? '')
-      setDeliveryMethod(draft.deliveryMethod ?? 'retiro')
-      setEmail(draft.email ?? '')
-      setFullName(draft.fullName ?? '')
-      setInitialPaymentAmount(draft.initialPaymentAmount ?? '0')
-      setInitialPaymentMethod(draft.initialPaymentMethod ?? '')
-      setInitialPaymentNotes(draft.initialPaymentNotes ?? '')
-      setItems(Array.isArray(draft.items) ? draft.items : [])
-      setOrderNotes(draft.orderNotes ?? '')
-      setDiscountCode(draft.discountCode ?? '')
-      setManualDiscountAmount(draft.manualDiscountAmount ?? '0')
-      setAppliedDiscount(draft.appliedDiscount ?? null)
-      setPaidAt(draft.paidAt ?? '')
-      setPhone(draft.phone ?? '')
-      setState(draft.state ?? '')
-    } catch {
-      window.localStorage.removeItem(SELLER_ORDER_DRAFT_STORAGE_KEY)
-    } finally {
-      setIsDraftHydrated(true)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !isDraftHydrated) {
-      return
-    }
-
-    const draft = {
-      activeSection,
-      address,
-      city,
-      deliveryMethod,
-      email,
-      fullName,
-      initialPaymentAmount,
-      initialPaymentMethod,
-      initialPaymentNotes,
-      items,
-      orderNotes,
-      discountCode,
-      manualDiscountAmount,
-      appliedDiscount,
-      paidAt,
-      phone,
-      state,
-    }
-
-    window.localStorage.setItem(SELLER_ORDER_DRAFT_STORAGE_KEY, JSON.stringify(draft))
-  }, [
-    activeSection,
-    address,
-    city,
-    deliveryMethod,
-    email,
-    fullName,
-    initialPaymentAmount,
-    initialPaymentMethod,
-    initialPaymentNotes,
-    items,
-    orderNotes,
-    discountCode,
-    manualDiscountAmount,
-    appliedDiscount,
-    paidAt,
-    phone,
-    state,
-    isDraftHydrated,
-  ])
   const selectedProduct = useMemo(
     () => productsQuery.data?.find((p) => p.id === productId) ?? null,
     [productId, productsQuery.data],
@@ -247,9 +178,7 @@ export function AdminSellerOrderCreatePage() {
   const createOrderMutation = useMutation({
     mutationFn: createStaffOrder,
     onSuccess: async (order) => {
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(SELLER_ORDER_DRAFT_STORAGE_KEY)
-      }
+      resetOrderForm()
       toast.success(`✅ Pedido #${order.order_number} registrado con éxito`, {
         description: 'Redirigiendo al listado de pedidos...',
       })
@@ -268,6 +197,61 @@ export function AdminSellerOrderCreatePage() {
     setColorId('')
     setQuantity('1')
     setItemNotes('')
+  }
+
+  function resetOrderForm() {
+    setActiveSection('customer')
+    setAddress('')
+    setAppliedDiscount(null)
+    setCity('')
+    setColorId('')
+    setCustomerSearch('')
+    setDeliveryMethod('retiro')
+    setDiscountCode('')
+    setEmail('')
+    setFullName('')
+    setInitialPaymentAmount('0')
+    setInitialPaymentMethod('')
+    setInitialPaymentNotes('')
+    setItems([])
+    setItemNotes('')
+    setManualDiscountAmount('0')
+    setOrderNotes('')
+    setPaidAt('')
+    setPhone('')
+    setPhoneNumber('')
+    setPhonePrefix(PHONE_PREFIXES[0])
+    setProductId('')
+    setQuantity('1')
+    setRemovingIndex(null)
+    setSelectedCustomerId(null)
+    setState('')
+    setTopSizeId('')
+    setBottomSizeId('')
+    setValidationErrors({})
+  }
+
+  function applyCustomerSelection(customer: Awaited<ReturnType<typeof getAdminCustomers>>[number]) {
+    const normalizedPhone = normalizePhone(customer.phone ?? '')
+
+    setSelectedCustomerId(customer.id)
+    setCustomerSearch(customer.full_name)
+    setFullName(customer.full_name)
+    setEmail(customer.email ?? '')
+    setCity(customer.city ?? '')
+    setState(customer.state ?? '')
+    setAddress(customer.address ?? '')
+    setPhone(normalizedPhone)
+    setPhonePrefix(normalizedPhone.length >= 4 ? normalizedPhone.slice(0, 4) : PHONE_PREFIXES[0])
+    setPhoneNumber(normalizedPhone.length >= 4 ? normalizedPhone.slice(4, 11) : '')
+    setValidationErrors((current) => ({
+      ...current,
+      address: false,
+      city: false,
+      fullName: false,
+      phone: false,
+    }))
+    toast.success('Cliente cargado en el formulario.')
   }
 
   function handleAddItem() {
@@ -452,15 +436,28 @@ export function AdminSellerOrderCreatePage() {
     <div className="min-h-screen space-y-6 pb-12">
       <PageHeader
         title="Nuevo pedido"
-        description="Registra un pedido interno con información del cliente, productos y pago inicial."
+        description="Registra un pedido interno con informacion del cliente, productos y pago inicial."
         action={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/admin/pedidos')}
-          >
-            Cancelar
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<RotateCcw className="size-4" />}
+              onClick={resetOrderForm}
+            >
+              Limpiar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                resetOrderForm()
+                navigate('/admin/pedidos')
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
         }
       />
 
@@ -545,6 +542,83 @@ export function AdminSellerOrderCreatePage() {
                     Los campos con <span className="text-rose-500">*</span> son obligatorios
                   </p>
                 </div>
+              </div>
+
+              <div className="rounded-3xl border border-atarah-gold-200 bg-atarah-cream-50/70 p-4 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-atarah-charcoal-500">
+                      Cliente existente
+                    </p>
+                    <p className="mt-1 text-sm text-atarah-charcoal-600">
+                      Busca por nombre, telefono, correo, ciudad o direccion para reutilizar la ficha correcta.
+                    </p>
+                  </div>
+                  {selectedExistingCustomer ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCustomerId(null)
+                        setCustomerSearch('')
+                      }}
+                    >
+                      Quitar seleccion
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="mt-4">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-atarah-charcoal-400" />
+                    <Input
+                      id="existing-customer-search"
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      className="pl-11"
+                      placeholder="Buscar cliente existente"
+                    />
+                  </div>
+                </div>
+                {customersQuery.isError ? (
+                  <p className="mt-3 text-sm text-rose-600">No fue posible consultar la base de clientes.</p>
+                ) : customerSearch.trim().length >= 2 ? (
+                  filteredCustomers.length > 0 ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      {filteredCustomers.map((customer) => (
+                        <button
+                          key={customer.id}
+                          type="button"
+                          onClick={() => applyCustomerSelection(customer)}
+                          className={`rounded-2xl border p-4 text-left transition-all ${selectedCustomerId === customer.id ? 'border-atarah-wine-500 bg-white shadow-sm ring-2 ring-atarah-gold-200/60' : 'border-atarah-gold-200 bg-white/90 hover:border-atarah-gold-400 hover:bg-white'}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-atarah-charcoal-900">{customer.full_name}</p>
+                              <p className="mt-1 text-xs text-atarah-charcoal-500">
+                                {customer.city || 'Sin ciudad'}{customer.state ? ', ' + customer.state : ''}
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-atarah-cream-100 px-2.5 py-1 text-[11px] font-semibold text-atarah-wine-700">
+                              {customer.orders_count} pedidos
+                            </span>
+                          </div>
+                          <div className="mt-3 space-y-1 text-sm text-atarah-charcoal-600">
+                            <p>{customer.phone || 'Sin telefono'}</p>
+                            <p>{customer.email || 'Sin correo'}</p>
+                            <p className="line-clamp-2">{customer.address || 'Sin direccion registrada'}</p>
+                          </div>
+                          <p className="mt-3 text-xs text-atarah-charcoal-400">
+                            Registro: {formatDate(customer.created_at)}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm text-atarah-charcoal-500">No encontramos clientes con esa busqueda.</p>
+                  )
+                ) : (
+                  <p className="mt-3 text-sm text-atarah-charcoal-500">Escribe al menos 2 caracteres para buscar.</p>
+                )}
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
