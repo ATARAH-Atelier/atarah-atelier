@@ -22,6 +22,7 @@ import { getReportsSnapshot, getStatusLabel } from '../../services/reports.servi
 import type { ReportsDebtorPoint } from '../../types/reports'
 
 type DebtorSort = 'outstanding_desc' | 'recent_desc' | 'orders_desc' | 'name_asc'
+type DebtorBalanceView = 'all' | 'delivered'
 
 function formatDebtorItems(items: Array<{ productName: string; quantity: number }>) {
   return items
@@ -44,6 +45,7 @@ export function AdminDebtorsPage() {
   const [stateFilter, setStateFilter] = useState('all')
   const [cityFilter, setCityFilter] = useState('all')
   const [sortBy, setSortBy] = useState<DebtorSort>('outstanding_desc')
+  const [balanceView, setBalanceView] = useState<DebtorBalanceView>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const reportsQuery = useQuery({
@@ -110,8 +112,25 @@ export function AdminDebtorsPage() {
       return second.outstanding - first.outstanding
     })
 
-  const totalOutstanding = filteredDebtors.reduce((sum, debtor) => sum + debtor.outstanding, 0)
-  const totalOrders = filteredDebtors.reduce((sum, debtor) => sum + debtor.orders.length, 0)
+  const visibleDebtors = filteredDebtors
+    .map((debtor) => {
+      const visibleOrders =
+        balanceView === 'delivered'
+          ? debtor.orders.filter((order) => order.status === 'delivered')
+          : debtor.orders
+
+      const visibleOutstanding = visibleOrders.reduce((sum, order) => sum + order.balance, 0)
+
+      return {
+        ...debtor,
+        orders: visibleOrders,
+        outstanding: visibleOutstanding,
+      }
+    })
+    .filter((debtor) => debtor.orders.length > 0 && debtor.outstanding > 0)
+
+  const totalOutstanding = visibleDebtors.reduce((sum, debtor) => sum + debtor.outstanding, 0)
+  const totalOrders = visibleDebtors.reduce((sum, debtor) => sum + debtor.orders.length, 0)
 
   if (reportsQuery.isError) {
     return (
@@ -160,15 +179,21 @@ export function AdminDebtorsPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="border-atarah-gold-200 p-5 shadow-sm">
-          <p className="text-sm text-atarah-charcoal-600">Clientes con deuda</p>
-          <p className="mt-2 text-3xl font-bold text-atarah-wine-900">{filteredDebtors.length}</p>
+          <p className="text-sm text-atarah-charcoal-600">
+            {balanceView === 'delivered' ? 'Clientes con deuda entregada' : 'Clientes con deuda'}
+          </p>
+          <p className="mt-2 text-3xl font-bold text-atarah-wine-900">{visibleDebtors.length}</p>
         </Card>
         <Card className="border-atarah-gold-200 p-5 shadow-sm">
-          <p className="text-sm text-atarah-charcoal-600">Saldo pendiente filtrado</p>
+          <p className="text-sm text-atarah-charcoal-600">
+            {balanceView === 'delivered' ? 'Saldo pendiente entregado' : 'Saldo pendiente filtrado'}
+          </p>
           <p className="mt-2 text-3xl font-bold text-atarah-wine-900">{formatCurrency(totalOutstanding)}</p>
         </Card>
         <Card className="border-atarah-gold-200 p-5 shadow-sm">
-          <p className="text-sm text-atarah-charcoal-600">Pedidos con saldo</p>
+          <p className="text-sm text-atarah-charcoal-600">
+            {balanceView === 'delivered' ? 'Pedidos entregados con saldo' : 'Pedidos con saldo'}
+          </p>
           <p className="mt-2 text-3xl font-bold text-atarah-wine-900">{totalOrders}</p>
         </Card>
       </div>
@@ -211,16 +236,33 @@ export function AdminDebtorsPage() {
 
           <Select value={sortBy} onChange={(event) => setSortBy(event.target.value as DebtorSort)}>
             <option value="outstanding_desc">Mayor saldo</option>
-            <option value="recent_desc">MÃ¡s reciente</option>
-            <option value="orders_desc">MÃ¡s pedidos</option>
+            <option value="recent_desc">Mas reciente</option>
+            <option value="orders_desc">Mas pedidos</option>
             <option value="name_asc">Nombre A-Z</option>
           </Select>
         </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button
+            variant={balanceView === 'all' ? 'primary' : 'outline'}
+            size="sm"
+            onClick={() => setBalanceView('all')}
+          >
+            Todo lo pendiente
+          </Button>
+          <Button
+            variant={balanceView === 'delivered' ? 'primary' : 'outline'}
+            size="sm"
+            onClick={() => setBalanceView('delivered')}
+          >
+            Solo pedidos entregados
+          </Button>
+        </div>
       </Card>
 
-      {filteredDebtors.length ? (
+      {visibleDebtors.length ? (
         <div className="space-y-4">
-          {filteredDebtors.map((debtor) => (
+          {visibleDebtors.map((debtor) => (
             <Card key={debtor.customerId} className="border-atarah-gold-200 p-5 shadow-sm">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="space-y-3">
@@ -234,7 +276,7 @@ export function AdminDebtorsPage() {
                   <div className="grid gap-2 text-sm text-atarah-charcoal-600 sm:grid-cols-2">
                     <p className="flex items-center gap-2">
                       <Phone className="size-4 text-atarah-wine-700" />
-                      {debtor.phone ?? 'Sin telÃ©fono'}
+                      {debtor.phone ?? 'Sin telefono'}
                     </p>
                     <p className="flex items-center gap-2">
                       <Mail className="size-4 text-atarah-wine-700" />
@@ -242,18 +284,20 @@ export function AdminDebtorsPage() {
                     </p>
                     <p className="flex items-center gap-2 sm:col-span-2">
                       <MapPin className="size-4 text-atarah-wine-700" />
-                      {[debtor.city, debtor.state, debtor.address].filter(Boolean).join(', ') || 'Sin direcciÃ³n registrada'}
+                      {[debtor.city, debtor.state, debtor.address].filter(Boolean).join(', ') || 'Sin direccion registrada'}
                     </p>
                   </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[280px]">
                   <div className="rounded-2xl bg-atarah-cream-50 px-4 py-3 text-sm">
-                    <p className="text-atarah-charcoal-500">Pedidos con saldo</p>
+                    <p className="text-atarah-charcoal-500">
+                      {balanceView === 'delivered' ? 'Pedidos entregados con saldo' : 'Pedidos con saldo'}
+                    </p>
                     <p className="mt-1 text-2xl font-bold text-atarah-wine-900">{debtor.orders.length}</p>
                   </div>
                   <div className="rounded-2xl bg-atarah-cream-50 px-4 py-3 text-sm">
-                    <p className="text-atarah-charcoal-500">Ãšltimo movimiento</p>
+                    <p className="text-atarah-charcoal-500">Ultimo movimiento</p>
                     <p className="mt-1 text-sm font-semibold text-atarah-wine-900">
                       {getLatestOrderTimestamp(debtor)
                         ? new Intl.DateTimeFormat('es-VE', { dateStyle: 'medium' }).format(getLatestOrderTimestamp(debtor))
@@ -299,7 +343,11 @@ export function AdminDebtorsPage() {
         <EmptyState
           icon={CircleDollarSign}
           title="No hay deudores con esos filtros"
-          description="Prueba quitando filtros o usando otra bÃºsqueda para encontrar pedidos pendientes."
+          description={
+            balanceView === 'delivered'
+              ? 'No hay pedidos entregados con saldo pendiente para esos filtros.'
+              : 'Prueba quitando filtros o usando otra busqueda para encontrar pedidos pendientes.'
+          }
         />
       )}
     </div>

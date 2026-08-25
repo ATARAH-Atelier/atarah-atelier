@@ -5,7 +5,7 @@ import type { PublicOrderStatus } from '../types/public-order'
 
 function mapPublicOrderStatus(result: any): PublicOrderStatus {
   return {
-    balance: normalizeNumber(result.balance),
+    balance: result.status === 'cancelled' ? 0 : normalizeNumber(result.balance),
     created_at: result.created_at,
     delivery_method: result.delivery_method,
     items: (result.items ?? []).map((item: any) => ({
@@ -94,3 +94,4 @@ export async function getCustomerOrderStatus(orderNumber: string, userId: string
 
   return mapPublicOrderStatus(result)
 }
+

@@ -61,7 +61,7 @@ export async function getCustomerAccount(userId: string): Promise<CustomerAccoun
   const orders = ((ordersData ?? []) as OrderRow[]).map((order) => {
     const total = normalizeNumber(order.total)
     const deposit = normalizeNumber(order.paid_amount)
-    const balance = order.balance == null ? Math.max(0, total - deposit) : normalizeNumber(order.balance)
+    const balance = order.status === 'cancelled' ? 0 : order.balance == null ? Math.max(0, total - deposit) : normalizeNumber(order.balance)
 
     return {
       balance,
@@ -194,4 +194,5 @@ export async function updateCustomerProfile(userId: string, input: UpdateCustome
 
   return createdCustomer.id
 }
+
 

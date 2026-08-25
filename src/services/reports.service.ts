@@ -4,9 +4,11 @@ import type { OrderStatus } from '../types/database'
 import type {
   ReportMetric,
   ReportsCategoryPoint,
+  ReportsColorPoint,
   ReportsCustomerPoint,
   ReportsDebtorPoint,
   ReportsInsight,
+  ReportsModelPoint,
   ReportsMonthlyPoint,
   ReportsProductPoint,
   ReportsSnapshot,
@@ -27,6 +29,7 @@ interface OrderReportRow {
 }
 
 interface OrderItemReportRow {
+  color_name?: string | null
   line_total?: number | string | null
   order_id: string
   product_id?: string | null
@@ -54,6 +57,20 @@ interface ProductReportRow {
 }
 
 const ACTIVE_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'waiting_for_payment', 'in_production', 'ready']
+
+function isCountableOrder(order: OrderReportRow) {
+  return order.status !== 'cancelled'
+}
+
+function getOrderOutstanding(order: OrderReportRow) {
+  if (!isCountableOrder(order)) {
+    return 0
+  }
+
+  const total = normalizeNumber(order.total)
+  const paid = normalizeNumber(order.paid_amount)
+  return Math.max(0, total - paid)
+}
 
 function formatDelta(value: number) {
   if (!Number.isFinite(value)) {
@@ -102,7 +119,7 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
       .select('id, order_number, customer_id, status, total, paid_amount, balance, created_at, requested_date, delivery_method'),
     supabase
       .from('order_items')
-      .select('order_id, product_id, quantity, line_total, total, subtotal, product_name, product_name_snapshot'),
+      .select('order_id, product_id, quantity, line_total, total, subtotal, product_name, product_name_snapshot, color_name'),
     supabase
       .from('customers')
       .select('id, full_name, city, phone, email, state, address'),
@@ -128,21 +145,22 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
   }
 
   const orders = (ordersData ?? []) as OrderReportRow[]
+  const countableOrders = orders.filter((order) => isCountableOrder(order))
   const orderItems = (itemsData ?? []) as OrderItemReportRow[]
   const customers = (customersData ?? []) as CustomerReportRow[]
   const products = (productsData ?? []) as ProductReportRow[]
 
   const customerMap = new Map(customers.map((customer) => [customer.id, customer]))
   const productMap = new Map(products.map((product) => [product.id, product]))
-  const orderMap = new Map(orders.map((order) => [order.id, order]))
+  const orderMap = new Map(countableOrders.map((order) => [order.id, order]))
   const orderItemsByOrderId = new Map<string, Array<{ productName: string; quantity: number }>>()
 
-  const totalRevenue = orders.reduce((sum, order) => sum + normalizeNumber(order.total), 0)
-  const totalCollected = orders.reduce((sum, order) => sum + normalizeNumber(order.paid_amount), 0)
-  const totalOutstanding = orders.reduce((sum, order) => sum + normalizeNumber(order.balance), 0)
-  const totalOrders = orders.length
-  const activeCustomers = new Set(orders.map((order) => order.customer_id).filter(Boolean)).size
-  const deliveredOrders = orders.filter((order) => order.status === 'delivered').length
+  const totalRevenue = countableOrders.reduce((sum, order) => sum + normalizeNumber(order.total), 0)
+  const totalCollected = countableOrders.reduce((sum, order) => sum + normalizeNumber(order.paid_amount), 0)
+  const totalOutstanding = countableOrders.reduce((sum, order) => sum + getOrderOutstanding(order), 0)
+  const totalOrders = countableOrders.length
+  const activeCustomers = new Set(countableOrders.map((order) => order.customer_id).filter(Boolean)).size
+  const deliveredOrders = countableOrders.filter((order) => order.status === 'delivered').length
   const averageOrderValue = totalOrders ? totalRevenue / totalOrders : 0
 
   const trailingMonths = getTrailingMonths(6)
@@ -157,7 +175,7 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
 
   const statusMap = new Map<OrderStatus, ReportsStatusPoint>()
 
-  for (const order of orders) {
+  for (const order of countableOrders) {
     const createdAt = order.created_at ? new Date(order.created_at) : null
     const revenue = normalizeNumber(order.total)
     const collected = normalizeNumber(order.paid_amount)
@@ -184,6 +202,8 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
   }
 
   const productAccumulator = new Map<string, ReportsProductPoint>()
+  const modelAccumulator = new Map<string, ReportsModelPoint>()
+  const colorAccumulator = new Map<string, ReportsColorPoint>()
   const categoryAccumulator = new Map<string, ReportsCategoryPoint>()
   const customerAccumulator = new Map<string, ReportsCustomerPoint>()
 
@@ -199,6 +219,7 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
     const productName = item.product_name_snapshot ?? item.product_name ?? product?.name ?? 'Producto sin nombre'
     const category = product?.category?.trim() || 'Sin categoria'
     const productKey = item.product_id ?? productName
+    const colorName = item.color_name?.trim() || 'Color estandar'
 
     const currentProduct = productAccumulator.get(productKey) ?? {
       category,
@@ -211,6 +232,29 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
     currentProduct.revenue += revenue
     currentProduct.units += quantity
     productAccumulator.set(productKey, currentProduct)
+
+    const currentModel = modelAccumulator.get(productName) ?? {
+      category,
+      name: productName,
+      ordersCount: 0,
+      revenue: 0,
+      units: 0,
+    }
+    currentModel.ordersCount += 1
+    currentModel.revenue += revenue
+    currentModel.units += quantity
+    modelAccumulator.set(productName, currentModel)
+
+    const currentColor = colorAccumulator.get(colorName) ?? {
+      colorName,
+      ordersCount: 0,
+      revenue: 0,
+      units: 0,
+    }
+    currentColor.ordersCount += 1
+    currentColor.revenue += revenue
+    currentColor.units += quantity
+    colorAccumulator.set(colorName, currentColor)
 
     const currentCategory = categoryAccumulator.get(category) ?? {
       category,
@@ -243,7 +287,7 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
     }
   }
 
-  for (const order of orders) {
+  for (const order of countableOrders) {
     if (!order.customer_id) {
       continue
     }
@@ -261,7 +305,7 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
 
     currentCustomer.ordersCount += 1
     currentCustomer.paid += normalizeNumber(order.paid_amount)
-    currentCustomer.outstanding += normalizeNumber(order.balance)
+    currentCustomer.outstanding += getOrderOutstanding(order)
     if (!currentCustomer.revenue) {
       currentCustomer.revenue += normalizeNumber(order.total)
     }
@@ -291,31 +335,35 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const overdueOrders = orders.filter((order) => {
+  const overdueOrders = countableOrders.filter((order) => {
     if (!order.requested_date || !ACTIVE_STATUSES.includes(order.status)) {
       return false
     }
+
     const requestedDate = new Date(order.requested_date)
     requestedDate.setHours(0, 0, 0, 0)
     return requestedDate < today
   }).length
 
-  const dueThisWeek = orders.filter((order) => {
+  const dueThisWeek = countableOrders.filter((order) => {
     if (!order.requested_date || !ACTIVE_STATUSES.includes(order.status)) {
       return false
     }
+
     const requestedDate = new Date(order.requested_date)
     const diffDays = (requestedDate.getTime() - today.getTime()) / 86400000
     return diffDays >= 0 && diffDays <= 7
   }).length
 
-  const waitingPaymentOrders = orders.filter((order) =>
-    order.status === 'waiting_for_payment' || normalizeNumber(order.balance) > 0,
+  const waitingPaymentOrders = countableOrders.filter((order) =>
+    order.status === 'waiting_for_payment' || getOrderOutstanding(order) > 0,
   ).length
 
-  const readyToDeliver = orders.filter((order) => order.status === 'ready').length
+  const readyToDeliver = countableOrders.filter((order) => order.status === 'ready').length
   const strongestCategory = Array.from(categoryAccumulator.values()).sort((first, second) => second.revenue - first.revenue)[0]
   const topCustomer = Array.from(customerAccumulator.values()).sort((first, second) => second.revenue - first.revenue)[0]
+  const topModel = Array.from(modelAccumulator.values()).sort((first, second) => second.units - first.units || second.ordersCount - first.ordersCount)[0]
+  const topColor = Array.from(colorAccumulator.values()).sort((first, second) => second.units - first.units || second.ordersCount - first.ordersCount)[0]
 
   const insights: ReportsInsight[] = [
     {
@@ -345,6 +393,22 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
       value: strongestCategory ? `${strongestCategory.category}` : 'Sin datos',
     },
     {
+      description: topModel
+        ? `${topModel.name} es el modelo con mayor volumen de pedidos.`
+        : 'Aun no hay modelos suficientes para comparar.',
+      title: 'Modelo lider',
+      tone: 'wine',
+      value: topModel ? `${topModel.name}` : 'Sin datos',
+    },
+    {
+      description: topColor
+        ? `${topColor.colorName} es el color mas solicitado.`
+        : 'Aun no hay colores suficientes para comparar.',
+      title: 'Color lider',
+      tone: 'charcoal',
+      value: topColor ? topColor.colorName : 'Sin datos',
+    },
+    {
       description: topCustomer
         ? `${topCustomer.name} es el cliente con mayor facturacion acumulada.`
         : 'Aun no hay clientes suficientes para comparar.',
@@ -363,11 +427,17 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
   const monthly = Array.from(monthlyMap.values())
   const statusBreakdown = Array.from(statusMap.values()).sort((first, second) => second.count - first.count)
   const productsList = Array.from(productAccumulator.values()).sort((first, second) => second.revenue - first.revenue).slice(0, 8)
+  const modelsList = Array.from(modelAccumulator.values())
+    .sort((first, second) => second.units - first.units || second.ordersCount - first.ordersCount || second.revenue - first.revenue)
+    .slice(0, 8)
+  const colorsList = Array.from(colorAccumulator.values())
+    .sort((first, second) => second.units - first.units || second.ordersCount - first.ordersCount || second.revenue - first.revenue)
+    .slice(0, 8)
   const categories = Array.from(categoryAccumulator.values()).sort((first, second) => second.revenue - first.revenue)
   const customersList = Array.from(customerAccumulator.values()).sort((first, second) => second.revenue - first.revenue).slice(0, 8)
 
-  const debtorsByCustomer = orders
-    .filter((order) => order.customer_id && normalizeNumber(order.balance) > 0)
+  const debtorsByCustomer = countableOrders
+    .filter((order) => order.customer_id && getOrderOutstanding(order) > 0)
     .reduce<Map<string, ReportsDebtorPoint>>((accumulator, order) => {
       const customerId = order.customer_id as string
       const customer = customerMap.get(customerId)
@@ -383,9 +453,9 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
         state: customer?.state ?? null,
       }
 
-      current.outstanding += normalizeNumber(order.balance)
+      current.outstanding += getOrderOutstanding(order)
       current.orders.push({
-        balance: normalizeNumber(order.balance),
+        balance: getOrderOutstanding(order),
         createdAt: order.created_at,
         items: orderItemsByOrderId.get(order.id) ?? [],
         orderId: order.id,
@@ -406,9 +476,11 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
 
   return {
     categories,
+    colors: colorsList,
     customers: customersList,
     debtors: debtorsList,
     insights,
+    models: modelsList,
     monthly,
     products: productsList,
     statusBreakdown,

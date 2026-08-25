@@ -126,8 +126,8 @@ export function CustomerAccountPage() {
 
   const orders = accountQuery.data?.orders ?? []
   const activeOrders = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled')
-  const totalSpent = orders.reduce((sum, o) => sum + o.total, 0)
-  const totalPending = orders.reduce((sum, o) => sum + o.balance, 0)
+  const totalSpent = orders.filter((o) => o.status !== 'cancelled').reduce((sum, o) => sum + o.total, 0)
+  const totalPending = orders.filter((o) => o.status !== 'cancelled').reduce((sum, o) => sum + o.balance, 0)
   const customer = accountQuery.data?.customer ?? null
   const displayName = profile?.full_name ?? customer?.full_name ?? 'Cliente Atarah'
   const initials = getInitials(displayName)

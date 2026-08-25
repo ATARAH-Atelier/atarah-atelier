@@ -4,8 +4,10 @@ import {
   CircleDollarSign,
   Clock3,
   PackageSearch,
+  Palette,
   ReceiptText,
   RefreshCw,
+  Shirt,
   TrendingUp,
   Users,
 } from 'lucide-react'
@@ -153,13 +155,13 @@ export function AdminReportsPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         {snapshot.summary.map((metric, index) => {
           const Icon = METRIC_ICONS[index % METRIC_ICONS.length]
           return (
             <Card
               key={metric.title}
-              className="flex flex-col justify-between border-atarah-gold-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
+              className="flex flex-col justify-between border-atarah-gold-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-atarah-charcoal-600">{metric.title}</p>
@@ -188,7 +190,7 @@ export function AdminReportsPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {snapshot.insights.map((insight) => {
           const tone = INSIGHT_TONE_CLASSES[insight.tone] || INSIGHT_TONE_CLASSES.charcoal
           return (
@@ -209,12 +211,12 @@ export function AdminReportsPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
-        <Card className="p-6 shadow-sm border-atarah-gold-200">
-          <h2 className="font-display text-2xl font-bold text-atarah-wine-900 mb-4">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
+        <Card className="border-atarah-gold-200 p-6 shadow-sm">
+          <h2 className="mb-4 font-display text-2xl font-bold text-atarah-wine-900">
             Tendencia mensual
           </h2>
-          <p className="text-sm text-atarah-charcoal-600 mb-6">
+          <p className="mb-6 text-sm text-atarah-charcoal-600">
             Ultimos 6 meses de facturacion, cobro y pedidos.
           </p>
           <div className="h-72 w-full">
@@ -232,7 +234,7 @@ export function AdminReportsPage() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {snapshot.monthly.map((point) => (
               <div key={point.monthKey} className="rounded-xl bg-atarah-cream-50 p-3 text-center">
                 <p className="text-xs font-semibold uppercase text-atarah-charcoal-500">{point.label}</p>
@@ -242,14 +244,14 @@ export function AdminReportsPage() {
           </div>
         </Card>
 
-        <Card className="p-6 shadow-sm border-atarah-gold-200">
-          <h2 className="font-display text-2xl font-bold text-atarah-wine-900 mb-4">
+        <Card className="border-atarah-gold-200 p-6 shadow-sm">
+          <h2 className="mb-4 font-display text-2xl font-bold text-atarah-wine-900">
             Pipeline por estado
           </h2>
-          <p className="text-sm text-atarah-charcoal-600 mb-6">
+          <p className="mb-6 text-sm text-atarah-charcoal-600">
             Volumen, facturacion y avance de cobranza por etapa.
           </p>
-          <div className="h-48 w-full mb-6">
+          <div className="mb-6 h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -310,12 +312,12 @@ export function AdminReportsPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <Card className="p-6 shadow-sm border-atarah-gold-200">
-          <h2 className="font-display text-2xl font-bold text-atarah-wine-900 mb-4">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Card className="border-atarah-gold-200 p-6 shadow-sm">
+          <h2 className="mb-4 font-display text-2xl font-bold text-atarah-wine-900">
             Productos con mas ventas
           </h2>
-          <p className="text-sm text-atarah-charcoal-600 mb-6">
+          <p className="mb-6 text-sm text-atarah-charcoal-600">
             Referencias que generan mas ingresos y unidades.
           </p>
           {snapshot.products.length ? (
@@ -328,7 +330,7 @@ export function AdminReportsPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-atarah-charcoal-900 truncate">
+                          <span className="truncate text-sm font-semibold text-atarah-charcoal-900">
                             {product.name}
                           </span>
                           <span className="rounded-full bg-atarah-cream-200 px-2 py-0.5 text-xs font-medium text-atarah-charcoal-700">
@@ -363,11 +365,11 @@ export function AdminReportsPage() {
           )}
         </Card>
 
-        <Card className="p-6 shadow-sm border-atarah-gold-200">
-          <h2 className="font-display text-2xl font-bold text-atarah-wine-900 mb-4">
+        <Card className="border-atarah-gold-200 p-6 shadow-sm">
+          <h2 className="mb-4 font-display text-2xl font-bold text-atarah-wine-900">
             Categorias destacadas
           </h2>
-          <p className="text-sm text-atarah-charcoal-600 mb-6">
+          <p className="mb-6 text-sm text-atarah-charcoal-600">
             Ingresos y volumen por familia de producto.
           </p>
           <div className="space-y-3">
@@ -382,7 +384,7 @@ export function AdminReportsPage() {
                         {category.category}
                       </p>
                       <p className="text-xs text-atarah-charcoal-600">
-                        {category.units} uds. ? {category.ordersCount} movimientos
+                        {category.units} uds. | {category.ordersCount} movimientos
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-atarah-wine-900">
@@ -402,12 +404,123 @@ export function AdminReportsPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <Card className="p-6 shadow-sm border-atarah-gold-200">
-          <h2 className="font-display text-2xl font-bold text-atarah-wine-900 mb-4">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Card className="border-atarah-gold-200 p-6 shadow-sm">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-atarah-wine-50 text-atarah-wine-700">
+              <Shirt className="size-5" />
+            </div>
+            <div>
+              <h2 className="font-display text-2xl font-bold text-atarah-wine-900">
+                Modelos mas pedidos
+              </h2>
+              <p className="text-sm text-atarah-charcoal-600">
+                Ranking por unidades y cantidad de pedidos, no solo por dinero.
+              </p>
+            </div>
+          </div>
+          {snapshot.models.length ? (
+            <div className="space-y-3">
+              {snapshot.models.map((model, index) => {
+                const maxUnits = Math.max(...snapshot.models.map((entry) => entry.units), 1)
+                const barWidth = Math.max(8, (model.units / maxUnits) * 100)
+                return (
+                  <div key={`${model.name}-${index}`} className="rounded-xl bg-atarah-cream-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-semibold text-atarah-charcoal-900">
+                            {model.name}
+                          </span>
+                          <span className="rounded-full bg-atarah-cream-200 px-2 py-0.5 text-xs font-medium text-atarah-charcoal-700">
+                            {model.category}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center gap-4 text-xs text-atarah-charcoal-600">
+                          <span>{model.units} uds.</span>
+                          <span>{model.ordersCount} pedidos</span>
+                          <span className="font-medium text-atarah-wine-900">{formatCurrency(model.revenue)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 h-1.5 rounded-full bg-white">
+                      <div
+                        className="h-1.5 rounded-full bg-atarah-wine-900"
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={Shirt}
+              title="Sin datos de modelos"
+              description="Todavia no hay suficientes pedidos para comparar modelos."
+            />
+          )}
+        </Card>
+
+        <Card className="border-atarah-gold-200 p-6 shadow-sm">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-atarah-gold-100 text-atarah-wine-800">
+              <Palette className="size-5" />
+            </div>
+            <div>
+              <h2 className="font-display text-2xl font-bold text-atarah-wine-900">
+                Colores mas pedidos
+              </h2>
+              <p className="text-sm text-atarah-charcoal-600">
+                Que colores salen mas por volumen y frecuencia de pedidos.
+              </p>
+            </div>
+          </div>
+          {snapshot.colors.length ? (
+            <div className="space-y-3">
+              {snapshot.colors.map((color, index) => {
+                const maxUnits = Math.max(...snapshot.colors.map((entry) => entry.units), 1)
+                const barWidth = Math.max(8, (color.units / maxUnits) * 100)
+                return (
+                  <div key={`${color.colorName}-${index}`} className="rounded-xl bg-atarah-cream-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-atarah-charcoal-900">
+                          {color.colorName}
+                        </p>
+                        <div className="mt-2 flex items-center gap-4 text-xs text-atarah-charcoal-600">
+                          <span>{color.units} uds.</span>
+                          <span>{color.ordersCount} pedidos</span>
+                          <span className="font-medium text-atarah-wine-900">{formatCurrency(color.revenue)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 h-1.5 rounded-full bg-white">
+                      <div
+                        className="h-1.5 rounded-full bg-atarah-gold-500"
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={Palette}
+              title="Sin datos de colores"
+              description="Todavia no hay suficientes pedidos para comparar colores."
+            />
+          )}
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Card className="border-atarah-gold-200 p-6 shadow-sm">
+          <h2 className="mb-4 font-display text-2xl font-bold text-atarah-wine-900">
             Clientes de mayor valor
           </h2>
-          <p className="text-sm text-atarah-charcoal-600 mb-6">
+          <p className="mb-6 text-sm text-atarah-charcoal-600">
             Quienes mas compran, cuanto han pagado y cuanto sigue pendiente.
           </p>
           <div className="space-y-3">
@@ -446,14 +559,14 @@ export function AdminReportsPage() {
           </div>
         </Card>
 
-        <Card className="p-6 shadow-sm border-atarah-gold-200 bg-gradient-to-br from-atarah-wine-900 to-atarah-wine-800 text-white">
-          <h2 className="font-display text-2xl font-bold mb-4">
+        <Card className="border-atarah-gold-200 bg-gradient-to-br from-atarah-wine-900 to-atarah-wine-800 p-6 text-white shadow-sm">
+          <h2 className="mb-4 font-display text-2xl font-bold">
             Lectura rapida para direccion
           </h2>
-          <p className="text-sm text-white/75 mb-6">
+          <p className="mb-6 text-sm text-white/75">
             Si hoy tuvieras que decidir donde poner foco comercial y operativo, estas son las pistas mas utiles del negocio.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {snapshot.insights.map((insight) => (
               <div
                 key={insight.title}

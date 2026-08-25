@@ -584,7 +584,7 @@ export function AdminOrdersPage() {
   }
 
   const totalActive = filteredOrders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length
-  const totalPendingPayment = filteredOrders.filter((o) => o.balance > 0).length
+  const totalPendingPayment = filteredOrders.filter((o) => o.status !== 'cancelled' && o.balance > 0).length
 
   return (
     <>
@@ -1291,4 +1291,6 @@ export function AdminOrdersPage() {
     </>
   )
 }
+
+
 

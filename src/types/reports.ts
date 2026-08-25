@@ -1,4 +1,11 @@
-import type { OrderStatus } from './database'
+export type OrderStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'waiting_for_payment'
+  | 'in_production'
+  | 'ready'
+  | 'delivered'
+  | 'cancelled'
 
 export interface ReportMetric {
   deltaLabel: string
@@ -26,6 +33,21 @@ export interface ReportsStatusPoint {
 export interface ReportsProductPoint {
   category: string
   name: string
+  ordersCount: number
+  revenue: number
+  units: number
+}
+
+export interface ReportsModelPoint {
+  category: string
+  name: string
+  ordersCount: number
+  revenue: number
+  units: number
+}
+
+export interface ReportsColorPoint {
+  colorName: string
   ordersCount: number
   revenue: number
   units: number
@@ -84,9 +106,11 @@ export interface ReportsInsight {
 
 export interface ReportsSnapshot {
   categories: ReportsCategoryPoint[]
+  colors: ReportsColorPoint[]
   customers: ReportsCustomerPoint[]
   debtors: ReportsDebtorPoint[]
   insights: ReportsInsight[]
+  models: ReportsModelPoint[]
   monthly: ReportsMonthlyPoint[]
   products: ReportsProductPoint[]
   statusBreakdown: ReportsStatusPoint[]
