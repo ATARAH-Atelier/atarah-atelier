@@ -7,6 +7,7 @@ import {
   Palette,
   ReceiptText,
   RefreshCw,
+  Ruler,
   Shirt,
   TrendingUp,
   Users,
@@ -517,6 +518,112 @@ export function AdminReportsPage() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card className="border-atarah-gold-200 p-6 shadow-sm">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-atarah-cream-100 text-atarah-wine-800">
+              <Ruler className="size-5" />
+            </div>
+            <div>
+              <h2 className="font-display text-2xl font-bold text-atarah-wine-900">
+                Tallas de blusa mas pedidas
+              </h2>
+              <p className="text-sm text-atarah-charcoal-600">
+                Ranking de tallas superiores por unidades y frecuencia.
+              </p>
+            </div>
+          </div>
+          {snapshot.blouseSizes.length ? (
+            <div className="space-y-3">
+              {snapshot.blouseSizes.map((size, index) => {
+                const maxUnits = Math.max(...snapshot.blouseSizes.map((entry) => entry.units), 1)
+                const barWidth = Math.max(8, (size.units / maxUnits) * 100)
+                return (
+                  <div key={`${size.size}-${index}`} className="rounded-xl bg-atarah-cream-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-atarah-charcoal-900">
+                          {size.size}
+                        </p>
+                        <div className="mt-2 flex items-center gap-4 text-xs text-atarah-charcoal-600">
+                          <span>{size.units} uds.</span>
+                          <span>{size.ordersCount} pedidos</span>
+                          <span className="font-medium text-atarah-wine-900">{formatCurrency(size.revenue)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 h-1.5 rounded-full bg-white">
+                      <div
+                        className="h-1.5 rounded-full bg-atarah-charcoal-900"
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={Ruler}
+              title="Sin datos de tallas de blusa"
+              description="Todavia no hay suficientes pedidos para comparar tallas de blusa."
+            />
+          )}
+        </Card>
+
+        <Card className="border-atarah-gold-200 p-6 shadow-sm">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-atarah-gold-100 text-atarah-wine-800">
+              <Ruler className="size-5" />
+            </div>
+            <div>
+              <h2 className="font-display text-2xl font-bold text-atarah-wine-900">
+                Tallas de pantalon mas pedidas
+              </h2>
+              <p className="text-sm text-atarah-charcoal-600">
+                Ranking de tallas inferiores por unidades y frecuencia.
+              </p>
+            </div>
+          </div>
+          {snapshot.pantsSizes.length ? (
+            <div className="space-y-3">
+              {snapshot.pantsSizes.map((size, index) => {
+                const maxUnits = Math.max(...snapshot.pantsSizes.map((entry) => entry.units), 1)
+                const barWidth = Math.max(8, (size.units / maxUnits) * 100)
+                return (
+                  <div key={`${size.size}-${index}`} className="rounded-xl bg-atarah-cream-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-atarah-charcoal-900">
+                          {size.size}
+                        </p>
+                        <div className="mt-2 flex items-center gap-4 text-xs text-atarah-charcoal-600">
+                          <span>{size.units} uds.</span>
+                          <span>{size.ordersCount} pedidos</span>
+                          <span className="font-medium text-atarah-wine-900">{formatCurrency(size.revenue)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 h-1.5 rounded-full bg-white">
+                      <div
+                        className="h-1.5 rounded-full bg-atarah-gold-500"
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={Ruler}
+              title="Sin datos de tallas de pantalon"
+              description="Todavia no hay suficientes pedidos para comparar tallas de pantalon."
+            />
+          )}
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Card className="border-atarah-gold-200 p-6 shadow-sm">
           <h2 className="mb-4 font-display text-2xl font-bold text-atarah-wine-900">
             Clientes de mayor valor
           </h2>
@@ -587,3 +694,7 @@ export function AdminReportsPage() {
     </div>
   )
 }
+
+
+
+

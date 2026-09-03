@@ -110,8 +110,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return
       }
 
-      setIsLoading(true)
-
       void ensureProfileForUser(nextSession.user)
         .then(async (nextProfile) => {
           if (!isMounted) {
@@ -143,11 +141,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
               ? error.message
               : 'No fue posible validar tu perfil.',
           )
-        })
-        .finally(() => {
-          if (isMounted) {
-            setIsLoading(false)
-          }
         })
     })
 

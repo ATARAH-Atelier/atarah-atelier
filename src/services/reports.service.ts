@@ -11,6 +11,7 @@ import type {
   ReportsModelPoint,
   ReportsMonthlyPoint,
   ReportsProductPoint,
+  ReportsSizePoint,
   ReportsSnapshot,
   ReportsStatusPoint,
 } from '../types/reports'
@@ -29,9 +30,11 @@ interface OrderReportRow {
 }
 
 interface OrderItemReportRow {
+  blouse_size?: string | null
   color_name?: string | null
   line_total?: number | string | null
   order_id: string
+  pants_size?: string | null
   product_id?: string | null
   product_name?: string | null
   product_name_snapshot?: string | null
@@ -119,7 +122,7 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
       .select('id, order_number, customer_id, status, total, paid_amount, balance, created_at, requested_date, delivery_method'),
     supabase
       .from('order_items')
-      .select('order_id, product_id, quantity, line_total, total, subtotal, product_name, product_name_snapshot, color_name'),
+      .select('order_id, product_id, quantity, line_total, total, subtotal, product_name, product_name_snapshot, color_name, blouse_size, pants_size'),
     supabase
       .from('customers')
       .select('id, full_name, city, phone, email, state, address'),
@@ -204,6 +207,8 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
   const productAccumulator = new Map<string, ReportsProductPoint>()
   const modelAccumulator = new Map<string, ReportsModelPoint>()
   const colorAccumulator = new Map<string, ReportsColorPoint>()
+  const blouseSizeAccumulator = new Map<string, ReportsSizePoint>()
+  const pantsSizeAccumulator = new Map<string, ReportsSizePoint>()
   const categoryAccumulator = new Map<string, ReportsCategoryPoint>()
   const customerAccumulator = new Map<string, ReportsCustomerPoint>()
 
@@ -220,6 +225,8 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
     const category = product?.category?.trim() || 'Sin categoria'
     const productKey = item.product_id ?? productName
     const colorName = item.color_name?.trim() || 'Color estandar'
+    const blouseSize = item.blouse_size?.trim() || null
+    const pantsSize = item.pants_size?.trim() || null
 
     const currentProduct = productAccumulator.get(productKey) ?? {
       category,
@@ -255,6 +262,32 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
     currentColor.revenue += revenue
     currentColor.units += quantity
     colorAccumulator.set(colorName, currentColor)
+
+    if (blouseSize) {
+      const currentBlouseSize = blouseSizeAccumulator.get(blouseSize) ?? {
+        ordersCount: 0,
+        revenue: 0,
+        size: blouseSize,
+        units: 0,
+      }
+      currentBlouseSize.ordersCount += 1
+      currentBlouseSize.revenue += revenue
+      currentBlouseSize.units += quantity
+      blouseSizeAccumulator.set(blouseSize, currentBlouseSize)
+    }
+
+    if (pantsSize) {
+      const currentPantsSize = pantsSizeAccumulator.get(pantsSize) ?? {
+        ordersCount: 0,
+        revenue: 0,
+        size: pantsSize,
+        units: 0,
+      }
+      currentPantsSize.ordersCount += 1
+      currentPantsSize.revenue += revenue
+      currentPantsSize.units += quantity
+      pantsSizeAccumulator.set(pantsSize, currentPantsSize)
+    }
 
     const currentCategory = categoryAccumulator.get(category) ?? {
       category,
@@ -433,6 +466,12 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
   const colorsList = Array.from(colorAccumulator.values())
     .sort((first, second) => second.units - first.units || second.ordersCount - first.ordersCount || second.revenue - first.revenue)
     .slice(0, 8)
+  const blouseSizesList = Array.from(blouseSizeAccumulator.values())
+    .sort((first, second) => second.units - first.units || second.ordersCount - first.ordersCount || second.revenue - first.revenue)
+    .slice(0, 8)
+  const pantsSizesList = Array.from(pantsSizeAccumulator.values())
+    .sort((first, second) => second.units - first.units || second.ordersCount - first.ordersCount || second.revenue - first.revenue)
+    .slice(0, 8)
   const categories = Array.from(categoryAccumulator.values()).sort((first, second) => second.revenue - first.revenue)
   const customersList = Array.from(customerAccumulator.values()).sort((first, second) => second.revenue - first.revenue).slice(0, 8)
 
@@ -475,6 +514,7 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
     .sort((first, second) => second.outstanding - first.outstanding)
 
   return {
+    blouseSizes: blouseSizesList,
     categories,
     colors: colorsList,
     customers: customersList,
@@ -482,6 +522,7 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
     insights,
     models: modelsList,
     monthly,
+    pantsSizes: pantsSizesList,
     products: productsList,
     statusBreakdown,
     summary,

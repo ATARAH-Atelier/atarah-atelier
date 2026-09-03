@@ -33,7 +33,7 @@ import type { AppliedDiscount } from '../../types/database'
 
 export function CheckoutPage() {
   const { clearCart, items, replaceCart, total } = useCart()
-  const { errors, setValues, updateValue, validate, values } = useCheckout()
+  const { clearDraft, errors, setValues, updateValue, validate, values } = useCheckout()
   const { profile, user } = useAuth()
   const navigate = useNavigate()
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null)
@@ -168,6 +168,7 @@ export function CheckoutPage() {
     mutationFn: createGuestOrder,
     onSuccess: (order) => {
       persistCheckoutSession({ appliedDiscount, order, summaryItems: normalizedCheckoutItems })
+      clearDraft()
       clearCart()
       navigate(`/pedido/confirmacion/${order.order_number}`, { replace: true })
     },

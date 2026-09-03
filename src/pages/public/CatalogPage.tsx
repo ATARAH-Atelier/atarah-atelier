@@ -1,5 +1,5 @@
 ﻿import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { Alert } from '../../components/public/Alert'
 import { ProductGrid } from '../../components/public/ProductGrid'
@@ -12,12 +12,42 @@ import { usePublicProducts } from '../../features/catalog/hooks/usePublicProduct
 import type { PublicProductFilters } from '../../types/catalog'
 
 export function CatalogPage() {
-  const [filters, setFilters] = useState<PublicProductFilters>({ sort: 'recommended' })
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [filters, setFilters] = useState<PublicProductFilters>(() => {
+    const sort = searchParams.get('orden')
+
+    return {
+      category: searchParams.get('categoria') || undefined,
+      featuredOnly: searchParams.get('destacados') === '1',
+      search: searchParams.get('buscar') || undefined,
+      sort: sort === 'price_asc' || sort === 'price_desc' || sort === 'recent' ? sort : 'recommended',
+    }
+  })
   const { categoriesQuery, productsQuery } = usePublicProducts(filters)
 
   useDocumentTitle('Uniformes médicos | Atarah Atelier')
 
   const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data])
+
+  function updateFilters(nextFilters: PublicProductFilters) {
+    const nextSearchParams = new URLSearchParams()
+
+    if (nextFilters.search?.trim()) {
+      nextSearchParams.set('buscar', nextFilters.search)
+    }
+    if (nextFilters.category) {
+      nextSearchParams.set('categoria', nextFilters.category)
+    }
+    if (nextFilters.featuredOnly) {
+      nextSearchParams.set('destacados', '1')
+    }
+    if (nextFilters.sort && nextFilters.sort !== 'recommended') {
+      nextSearchParams.set('orden', nextFilters.sort)
+    }
+
+    setFilters(nextFilters)
+    setSearchParams(nextSearchParams, { replace: true })
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:space-y-8 sm:py-10 lg:px-8">
@@ -37,7 +67,7 @@ export function CatalogPage() {
 
       {/* Filtros pegados arriba al scrollear en mobile, para no perderlos entre productos */}
       <div className="sticky top-0 z-10 -mx-4 bg-[#fcf8f2]/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
-        <CatalogFilters categories={categories} filters={filters} onChange={setFilters} />
+        <CatalogFilters categories={categories} filters={filters} onChange={updateFilters} />
       </div>
 
       {productsQuery.isError ? (

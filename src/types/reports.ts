@@ -53,6 +53,13 @@ export interface ReportsColorPoint {
   units: number
 }
 
+export interface ReportsSizePoint {
+  ordersCount: number
+  revenue: number
+  size: string
+  units: number
+}
+
 export interface ReportsCategoryPoint {
   category: string
   ordersCount: number
@@ -105,6 +112,7 @@ export interface ReportsInsight {
 }
 
 export interface ReportsSnapshot {
+  blouseSizes: ReportsSizePoint[]
   categories: ReportsCategoryPoint[]
   colors: ReportsColorPoint[]
   customers: ReportsCustomerPoint[]
@@ -112,6 +120,7 @@ export interface ReportsSnapshot {
   insights: ReportsInsight[]
   models: ReportsModelPoint[]
   monthly: ReportsMonthlyPoint[]
+  pantsSizes: ReportsSizePoint[]
   products: ReportsProductPoint[]
   statusBreakdown: ReportsStatusPoint[]
   summary: ReportMetric[]
