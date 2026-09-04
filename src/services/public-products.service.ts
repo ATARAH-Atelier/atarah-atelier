@@ -10,6 +10,23 @@ interface PublicProductRow extends ProductRow {
   product_sizes?: ProductSizeRow[] | null
 }
 
+function getCategoryPriority(category: string) {
+  const normalizedCategory = category
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+  if (normalizedCategory.includes('mujer') || normalizedCategory.includes('dama') || normalizedCategory.includes('femen')) {
+    return 0
+  }
+
+  if (normalizedCategory.includes('hombre') || normalizedCategory.includes('caballero') || normalizedCategory.includes('mascul')) {
+    return 2
+  }
+
+  return 1
+}
+
 function mapPublicProduct(row: PublicProductRow): PublicProduct {
   const sizesTop = (row.product_sizes ?? [])
     .filter((size) => size.size_type === 'top')
@@ -146,7 +163,7 @@ export async function getPublicProducts(filters?: PublicProductFilters): Promise
       })
   }
 
-  return products
+  return products.sort((first, second) => getCategoryPriority(first.category) - getCategoryPriority(second.category))
 }
 
 export async function getPublicProductBySlug(slug: string): Promise<PublicProductDetail | null> {
@@ -184,7 +201,10 @@ export async function getPublicProductCategories() {
     throw new Error('No fue posible cargar las categorias del catalogo.')
   }
 
-  return Array.from(new Set((data ?? []).map((row) => row.category).filter((category): category is string => Boolean(category)))).sort((first, second) => first.localeCompare(second, 'es'))
+  return Array.from(new Set((data ?? []).map((row) => row.category).filter((category): category is string => Boolean(category))))
+    .sort((first, second) =>
+      getCategoryPriority(first) - getCategoryPriority(second) || first.localeCompare(second, 'es'),
+    )
 }
 
 

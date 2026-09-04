@@ -90,3 +90,32 @@ select:focus-visible,
 textarea:focus-visible {
   outline: none;
 }
+
+header.sticky {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 50;
+}
+
+header.sticky + main {
+  padding-top: 76px;
+}
+
+@media (min-width: 640px) {
+  header.sticky + main {
+    padding-top: 88px;
+  }
+}
+
+header.sticky a.relative span.hidden {
+  display: inline;
+  font-size: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  header.sticky a.relative span.hidden {
+    font-size: 0.875rem;
+  }
+}
