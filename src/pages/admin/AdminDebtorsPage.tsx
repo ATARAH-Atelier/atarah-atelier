@@ -4,7 +4,7 @@ import {
   Mail,
   MapPin,
   Phone,
-  RefreshCw,
+  Download as RefreshCw,
   Search,
   ShoppingBag,
 } from 'lucide-react'
@@ -19,6 +19,7 @@ import { Select } from '../../components/ui/Select'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { formatCurrency } from '../../lib/utils'
 import { getReportsSnapshot, getStatusLabel } from '../../services/reports.service'
+import { downloadDebtorsPdf } from '../../services/debtors-pdf.service'
 import type { ReportsDebtorPoint } from '../../types/reports'
 
 type DebtorSort = 'outstanding_desc' | 'recent_desc' | 'orders_desc' | 'name_asc'
@@ -46,7 +47,7 @@ export function AdminDebtorsPage() {
   const [cityFilter, setCityFilter] = useState('all')
   const [sortBy, setSortBy] = useState<DebtorSort>('outstanding_desc')
   const [balanceView, setBalanceView] = useState<DebtorBalanceView>('all')
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isRefreshing] = useState(false)
 
   const reportsQuery = useQuery({
     queryFn: getReportsSnapshot,
@@ -54,9 +55,7 @@ export function AdminDebtorsPage() {
   })
 
   const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await reportsQuery.refetch()
-    setTimeout(() => setIsRefreshing(false), 600)
+    downloadDebtorsPdf(visibleDebtors, totalOutstanding)
   }
 
   const debtors = reportsQuery.data?.debtors ?? []
@@ -173,7 +172,7 @@ export function AdminDebtorsPage() {
           onClick={handleRefresh}
           className="mt-2 border-atarah-gold-300/60"
         >
-          Actualizar
+          Descargar PDF
         </Button>
       </div>
 

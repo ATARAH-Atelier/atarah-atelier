@@ -231,6 +231,26 @@ export function AdminSellerOrderCreatePage() {
     setValidationErrors({})
   }
 
+  function clearCustomerSelection() {
+    setAddress('')
+    setCity('')
+    setCustomerSearch('')
+    setEmail('')
+    setFullName('')
+    setPhone('')
+    setPhoneNumber('')
+    setPhonePrefix(PHONE_PREFIXES[0])
+    setSelectedCustomerId(null)
+    setState('')
+    setValidationErrors((current) => ({
+      ...current,
+      address: false,
+      city: false,
+      fullName: false,
+      phone: false,
+    }))
+  }
+
   function applyCustomerSelection(customer: Awaited<ReturnType<typeof getAdminCustomers>>[number]) {
     const normalizedPhone = normalizePhone(customer.phone ?? '')
 
@@ -559,8 +579,7 @@ export function AdminSellerOrderCreatePage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setSelectedCustomerId(null)
-                        setCustomerSearch('')
+                        clearCustomerSelection()
                       }}
                     >
                       Quitar seleccion
@@ -629,6 +648,7 @@ export function AdminSellerOrderCreatePage() {
                     value={fullName}
                     onChange={(e) => {
                       setFullName(e.target.value)
+                      setSelectedCustomerId(null)
                       setValidationErrors((prev) => ({ ...prev, fullName: false }))
                     }}
                     placeholder="Ej. María García"
