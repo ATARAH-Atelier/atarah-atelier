@@ -97,6 +97,7 @@ export interface ReportsDebtorPoint {
   city: string | null
   customerId: string
   email: string | null
+  lastPaymentAt: string | null
   name: string
   orders: ReportsDebtorOrder[]
   outstanding: number

@@ -27,7 +27,7 @@ import { Textarea } from '../../components/ui/Textarea'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { createCheckoutToken } from '../../services/checkout.service'
 import { normalizePhone } from '../../lib/public-utils'
-import { createStaffOrder } from '../../services/orders.service'
+import { createStaffOrder, updateOrderPaymentDueDate } from '../../services/orders.service'
 import { getAdminCustomers } from '../../services/customers.service'
 import { validateDiscountCode } from '../../services/discounts.service'
 import { getPublicProducts } from '../../services/public-products.service'
@@ -95,6 +95,7 @@ export function AdminSellerOrderCreatePage() {
   const [initialPaymentMethod, setInitialPaymentMethod] = useState('')
   const [initialPaymentNotes, setInitialPaymentNotes] = useState('')
   const [paidAt, setPaidAt] = useState('')
+  const [paymentDueDate, setPaymentDueDate] = useState('')
 
   // UI local
   const [activeSection, setActiveSection] = useState<FormSection>('customer')
@@ -178,6 +179,9 @@ export function AdminSellerOrderCreatePage() {
   const createOrderMutation = useMutation({
     mutationFn: createStaffOrder,
     onSuccess: async (order) => {
+      if (remainingBalance > 0 && paymentDueDate) {
+        await updateOrderPaymentDueDate(order.order_id, paymentDueDate)
+      }
       resetOrderForm()
       toast.success(`✅ Pedido #${order.order_number} registrado con éxito`, {
         description: 'Redirigiendo al listado de pedidos...',
@@ -218,6 +222,7 @@ export function AdminSellerOrderCreatePage() {
     setManualDiscountAmount('0')
     setOrderNotes('')
     setPaidAt('')
+    setPaymentDueDate('')
     setPhone('')
     setPhoneNumber('')
     setPhonePrefix(PHONE_PREFIXES[0])
@@ -1067,6 +1072,16 @@ export function AdminSellerOrderCreatePage() {
                   value={paidAt}
                   onChange={(e) => setPaidAt(e.target.value)}
                 />
+                {remainingBalance > 0 ? (
+                  <Input
+                    id="paymentDueDate"
+                    label="Fecha de vencimiento del saldo"
+                    type="date"
+                    value={paymentDueDate}
+                    onChange={(e) => setPaymentDueDate(e.target.value)}
+                    helperText="No es la fecha de entrega."
+                  />
+                ) : null}
                 <div className="md:col-span-2">
                   <Textarea
                     id="paymentNotes"

@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   CircleDollarSign,
+  Download,
   Mail,
   MapPin,
   Phone,
-  Download as RefreshCw,
   Search,
   ShoppingBag,
 } from 'lucide-react'
@@ -14,6 +14,7 @@ import { EmptyState } from '../../components/common/EmptyState'
 import { PageHeader } from '../../components/common/PageHeader'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { CollectionPanel } from '../../features/collections/components/CollectionPanel'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
@@ -47,15 +48,21 @@ export function AdminDebtorsPage() {
   const [cityFilter, setCityFilter] = useState('all')
   const [sortBy, setSortBy] = useState<DebtorSort>('outstanding_desc')
   const [balanceView, setBalanceView] = useState<DebtorBalanceView>('all')
-  const [isRefreshing] = useState(false)
-
+  const [activeView, setActiveView] = useState<'debtors' | 'collection'>('debtors')
+  const [excludedPdfOrderIds, setExcludedPdfOrderIds] = useState<Set<string>>(() => new Set())
   const reportsQuery = useQuery({
     queryFn: getReportsSnapshot,
     queryKey: ['admin-reports'],
   })
 
-  const handleRefresh = async () => {
-    downloadDebtorsPdf(visibleDebtors, totalOutstanding)
+  const handleDownloadPdf = () => {
+    const locationLabel =
+      cityFilter === 'all'
+        ? stateFilter === 'all'
+          ? 'Todas las ubicaciones'
+          : stateFilter
+        : [cityFilter, stateFilter === 'all' ? null : stateFilter].filter(Boolean).join(', ')
+    downloadDebtorsPdf(pdfDebtors, pdfTotalOutstanding, locationLabel)
   }
 
   const debtors = reportsQuery.data?.debtors ?? []
@@ -130,6 +137,35 @@ export function AdminDebtorsPage() {
 
   const totalOutstanding = visibleDebtors.reduce((sum, debtor) => sum + debtor.outstanding, 0)
   const totalOrders = visibleDebtors.reduce((sum, debtor) => sum + debtor.orders.length, 0)
+  const pdfDebtors = visibleDebtors
+    .map((debtor) => {
+      const orders = debtor.orders.filter((order) => !excludedPdfOrderIds.has(order.orderId))
+      const hasExcludedOrder = orders.length !== debtor.orders.length
+
+      return {
+        ...debtor,
+        // Do not expose a payment date that could belong to an excluded order.
+        lastPaymentAt: hasExcludedOrder ? null : debtor.lastPaymentAt,
+        orders,
+        outstanding: orders.reduce((sum, order) => sum + order.balance, 0),
+      }
+    })
+    .filter((debtor) => debtor.orders.length > 0)
+  const pdfTotalOutstanding = pdfDebtors.reduce((sum, debtor) => sum + debtor.outstanding, 0)
+
+  const togglePdfOrder = (orderId: string) => {
+    setExcludedPdfOrderIds((current) => {
+      const next = new Set(current)
+
+      if (next.has(orderId)) {
+        next.delete(orderId)
+      } else {
+        next.add(orderId)
+      }
+
+      return next
+    })
+  }
 
   if (reportsQuery.isError) {
     return (
@@ -137,7 +173,7 @@ export function AdminDebtorsPage() {
         <PageHeader title="Deudores" description="Seguimiento de clientes con saldo pendiente." />
         <Card className="border-rose-200 bg-rose-50 p-6 text-rose-800">
           <p>{reportsQuery.error.message}</p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={handleRefresh}>
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => reportsQuery.refetch()}>
             Reintentar
           </Button>
         </Card>
@@ -168,14 +204,21 @@ export function AdminDebtorsPage() {
         <Button
           variant="outline"
           size="sm"
-          leftIcon={<RefreshCw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
-          onClick={handleRefresh}
+          leftIcon={<Download className="size-4" />}
+          onClick={handleDownloadPdf}
+          disabled={pdfDebtors.length === 0}
           className="mt-2 border-atarah-gold-300/60"
         >
           Descargar PDF
         </Button>
       </div>
 
+      <div className="inline-flex rounded-2xl border border-atarah-gold-200 bg-white p-1 shadow-sm">
+        <Button size="sm" variant={activeView === 'debtors' ? 'primary' : 'ghost'} onClick={() => setActiveView('debtors')}>Deudores</Button>
+        <Button size="sm" variant={activeView === 'collection' ? 'primary' : 'ghost'} onClick={() => setActiveView('collection')}>Cobranza</Button>
+      </div>
+
+      {activeView === 'collection' ? <CollectionPanel /> : <>
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="border-atarah-gold-200 p-5 shadow-sm">
           <p className="text-sm text-atarah-charcoal-600">
@@ -257,6 +300,9 @@ export function AdminDebtorsPage() {
             Solo pedidos entregados
           </Button>
         </div>
+        <p className="mt-4 text-sm text-atarah-charcoal-600">
+          Para compartir con una vendedora, selecciona su ciudad. Desmarca los pedidos que no quieras incluir: el PDF y su total solo mostrarán los pedidos seleccionados.
+        </p>
       </Card>
 
       {visibleDebtors.length ? (
@@ -321,6 +367,15 @@ export function AdminDebtorsPage() {
                       </div>
 
                       <div className="grid gap-2 text-sm text-atarah-charcoal-600 lg:text-right">
+                        <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-atarah-wine-900 lg:justify-end">
+                          <input
+                            type="checkbox"
+                            checked={!excludedPdfOrderIds.has(order.orderId)}
+                            onChange={() => togglePdfOrder(order.orderId)}
+                            className="size-4 accent-atarah-wine-900"
+                          />
+                          Incluir en PDF
+                        </label>
                         <div className="flex items-center gap-2 lg:justify-end">
                           <ShoppingBag className="size-4 text-atarah-wine-700" />
                           <span>{order.items.reduce((sum, item) => sum + item.quantity, 0)} piezas</span>
@@ -349,6 +404,7 @@ export function AdminDebtorsPage() {
           }
         />
       )}
+      </>}
     </div>
   )
 }

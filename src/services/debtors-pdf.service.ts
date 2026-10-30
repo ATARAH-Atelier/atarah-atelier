@@ -58,7 +58,7 @@ function ensureSpace(document: jsPDF, y: number, requiredHeight: number, generat
   return 39
 }
 
-export function downloadDebtorsPdf(debtors: ReportsDebtorPoint[], totalOutstanding: number) {
+export function downloadDebtorsPdf(debtors: ReportsDebtorPoint[], totalOutstanding: number, locationLabel: string) {
   const document = new jsPDF({ format: 'a4', unit: 'mm' })
   const generatedAt = new Intl.DateTimeFormat('es-VE', {
     dateStyle: 'long',
@@ -71,7 +71,10 @@ export function downloadDebtorsPdf(debtors: ReportsDebtorPoint[], totalOutstandi
   document.roundedRect(14, 38, 182, 19, 3, 3, 'F')
   document.setFont('helvetica', 'bold')
   document.setFontSize(10)
-  document.text(`${debtors.length} clientes con saldo pendiente`, 20, 46)
+  document.text(`Ubicacion: ${locationLabel}`, 20, 44)
+  document.setFont('helvetica', 'normal')
+  document.setFontSize(8.5)
+  document.text(`${debtors.length} clientes con saldo pendiente`, 20, 50)
   document.setTextColor(105, 33, 41)
   document.setFontSize(14)
   document.text(formatCurrency(totalOutstanding), 190, 50, { align: 'right' })
@@ -84,18 +87,21 @@ export function downloadDebtorsPdf(debtors: ReportsDebtorPoint[], totalOutstandi
       .filter(Boolean)
       .join('  |  ')
     const address = [debtor.city, debtor.state, debtor.address].filter(Boolean).join(', ') || 'Sin direccion registrada'
-    const minimumHeight = 33 + debtor.orders.length * 18
+    const minimumHeight = 37 + debtor.orders.length * 18
     y = ensureSpace(document, y, minimumHeight, generatedAt)
 
     document.setFillColor(241, 231, 212)
-    document.roundedRect(14, y, 182, 7, 2, 2, 'F')
+    document.roundedRect(14, y, 182, 11, 2, 2, 'F')
     document.setFont('helvetica', 'bold')
     document.setFontSize(11)
     document.text(debtor.name, 18, y + 5)
     document.setTextColor(127, 31, 41)
     document.text(`Saldo: ${formatCurrency(debtor.outstanding)}`, 192, y + 5, { align: 'right' })
+    document.setFont('helvetica', 'normal')
+    document.setFontSize(7.5)
+    document.text(`Ultimo abono: ${formatDate(debtor.lastPaymentAt)}`, 192, y + 9, { align: 'right' })
     document.setTextColor(44, 37, 37)
-    y += 12
+    y += 16
 
     document.setFont('helvetica', 'normal')
     document.setFontSize(8.5)

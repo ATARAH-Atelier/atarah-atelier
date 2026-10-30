@@ -20,7 +20,7 @@ export function PublicHeader() {
   const accountPath = resolvePostLoginPath(profile)
 
   return (
-    <header className="sticky top-0 z-40 border-b border-atarah-gold-300/60 bg-atarah-cream-50/95 backdrop-blur">
+    <header className="public-site-header sticky top-0 z-40 border-b border-atarah-gold-300/60 bg-atarah-cream-50/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:py-4 lg:px-8">
         {/* Logo */}
         <Link to="/" className="flex min-w-0 items-center gap-3">

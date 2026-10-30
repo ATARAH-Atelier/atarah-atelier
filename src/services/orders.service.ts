@@ -597,6 +597,17 @@ async function resolveUpdatedOrderItem(input: UpdateAdminOrderItemInput) {
   }
 }
 
+export async function updateOrderPaymentDueDate(orderId: string, paymentDueDate: string | null) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ payment_due_date: paymentDueDate })
+    .eq('id', orderId)
+
+  if (error) {
+    throw new Error('No fue posible guardar la fecha de vencimiento del saldo.')
+  }
+}
+
 export async function updateAdminOrderItems(
   orderId: string,
   input: { items: UpdateAdminOrderItemInput[] },

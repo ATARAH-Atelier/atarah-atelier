@@ -59,6 +59,11 @@ interface ProductReportRow {
   name?: string | null
 }
 
+interface OrderPaymentReportRow {
+  order_id: string
+  paid_at: string | null
+}
+
 const ACTIVE_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'waiting_for_payment', 'in_production', 'ready']
 
 function isCountableOrder(order: OrderReportRow) {
@@ -116,7 +121,7 @@ function buildMetric(title: string, value: number, helper: string, deltaValue: n
 }
 
 export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
-  const [{ data: ordersData, error: ordersError }, { data: itemsData, error: itemsError }, { data: customersData, error: customersError }, { data: productsData, error: productsError }] = await Promise.all([
+  const [{ data: ordersData, error: ordersError }, { data: itemsData, error: itemsError }, { data: customersData, error: customersError }, { data: productsData, error: productsError }, { data: paymentsData, error: paymentsError }] = await Promise.all([
     supabase
       .from('orders')
       .select('id, order_number, customer_id, status, total, paid_amount, balance, created_at, requested_date, delivery_method'),
@@ -129,6 +134,9 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
     supabase
       .from('products')
       .select('id, name, category'),
+    supabase
+      .from('order_payments')
+      .select('order_id, paid_at'),
   ])
 
   if (ordersError) {
@@ -147,16 +155,33 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
     throw new Error('No fue posible construir los reportes porque fallo la lectura de productos.')
   }
 
+  if (paymentsError) {
+    throw new Error('No fue posible construir los reportes porque fallo la lectura de abonos.')
+  }
+
   const orders = (ordersData ?? []) as OrderReportRow[]
   const countableOrders = orders.filter((order) => isCountableOrder(order))
   const orderItems = (itemsData ?? []) as OrderItemReportRow[]
   const customers = (customersData ?? []) as CustomerReportRow[]
   const products = (productsData ?? []) as ProductReportRow[]
+  const payments = (paymentsData ?? []) as OrderPaymentReportRow[]
 
   const customerMap = new Map(customers.map((customer) => [customer.id, customer]))
   const productMap = new Map(products.map((product) => [product.id, product]))
   const orderMap = new Map(countableOrders.map((order) => [order.id, order]))
   const orderItemsByOrderId = new Map<string, Array<{ productName: string; quantity: number }>>()
+  const latestPaymentByOrderId = new Map<string, string>()
+
+  for (const payment of payments) {
+    if (!payment.paid_at) {
+      continue
+    }
+
+    const currentLatest = latestPaymentByOrderId.get(payment.order_id)
+    if (!currentLatest || new Date(payment.paid_at).getTime() > new Date(currentLatest).getTime()) {
+      latestPaymentByOrderId.set(payment.order_id, payment.paid_at)
+    }
+  }
 
   const totalRevenue = countableOrders.reduce((sum, order) => sum + normalizeNumber(order.total), 0)
   const totalCollected = countableOrders.reduce((sum, order) => sum + normalizeNumber(order.paid_amount), 0)
@@ -485,6 +510,7 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
         city: customer?.city ?? null,
         customerId,
         email: customer?.email ?? null,
+        lastPaymentAt: null,
         name: customer?.full_name?.trim() || 'Cliente sin nombre',
         orders: [],
         outstanding: 0,
@@ -493,6 +519,10 @@ export async function getReportsSnapshot(): Promise<ReportsSnapshot> {
       }
 
       current.outstanding += getOrderOutstanding(order)
+      const latestOrderPayment = latestPaymentByOrderId.get(order.id)
+      if (latestOrderPayment && (!current.lastPaymentAt || new Date(latestOrderPayment).getTime() > new Date(current.lastPaymentAt).getTime())) {
+        current.lastPaymentAt = latestOrderPayment
+      }
       current.orders.push({
         balance: getOrderOutstanding(order),
         createdAt: order.created_at,
